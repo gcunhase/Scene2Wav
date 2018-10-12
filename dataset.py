@@ -51,9 +51,9 @@ class NpzDataset(Dataset):
         super().__init__()
         self.overlap_len = overlap_len
         self.q_levels = q_levels
-        data = np.load(os.path.join(path, 'video_feats_HSL_10fps_train.npz'))
+        data = np.load(path)
         audio = data['audio']
-        samples = np.shape(audio)[0]
+        samples = len(audio)
         self.audio_samples = audio[
             int(ratio_min * samples) : int(ratio_max * samples)
         ]
@@ -70,7 +70,7 @@ class NpzDataset(Dataset):
         ])
 
     def __len__(self):
-        return np.shape(self.audio_samples)[0]
+        return len(self.audio_samples)
 
     def get_audio_sample(self, index):
         return self.audio_samples[index]
@@ -106,7 +106,7 @@ class DataLoader(DataLoaderBase):
                 input_sequences = sequences[:, : -1]  # (batch_size, 1087)
                 target_sequences = sequences[:, self.overlap_len :].contiguous()
                 import numpy as np
-                print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
+                # print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
 
                 yield (input_sequences, reset, target_sequences)
 

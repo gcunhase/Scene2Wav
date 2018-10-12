@@ -12,7 +12,7 @@ from trainer.plugins import (
     TrainingLossMonitor, ValidationPlugin, AbsoluteTimeMonitor, SaverPlugin,
     GeneratorPlugin, StatsPlugin
 )
-from dataset import NpzDataset, FolderDataset, DataLoader
+from dataset import NpzDataset, DataLoader
 
 import torch
 from torch.utils.trainer.plugins import Logger
@@ -52,7 +52,8 @@ default_params = {
     'sample_length': 30000,  # 8s -> 80000
     'loss_smoothing': 0.99,
     'cuda': True,
-    'comet_key': None
+    'comet_key': None,
+    'npz_filename': 'video_feats_HSL_10fps_pad_train.npz'
 }
 
 tag_params = [
@@ -130,9 +131,9 @@ def tee_stdout(log_path):
     sys.stdout = Tee()
 
 def make_data_loader(overlap_len, params):
-    path = os.path.join(params['datasets_path'], params['dataset'])
+    path = os.path.join(params['datasets_path'], params['dataset'], params['npz_filename'])
     def data_loader(split_from, split_to, eval):
-        dataset = FolderDataset(
+        dataset = NpzDataset(
             path, overlap_len, params['q_levels'], split_from, split_to
         )
         return DataLoader(
