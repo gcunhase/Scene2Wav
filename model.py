@@ -204,7 +204,7 @@ class Runner:
         # self.hidden_states = {rnn: hidden for rnn in self.model.frame_level_rnns}
         # hidden_cnn = torch.LongTensor(self.model.n_rnn, self.model.batch_size, self.model.dim).fill_(0)
         self.hidden_states = {rnn: hidden for rnn in self.model.frame_level_rnns}
-        print("hidden states shape: {}".format(np.shape(self.hidden_states)))
+        # print("hidden states shape: {}".format(np.shape(self.hidden_states)))
 
     # self.hidden_states <- condition
     def run_rnn(self, rnn, prev_samples, upper_tier_conditioning):

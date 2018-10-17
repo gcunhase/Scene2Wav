@@ -73,6 +73,7 @@ class ValidationPlugin(Plugin):
 
             n_examples += batch_size
 
+        n_examples = max(1, n_examples)
         return loss_sum / n_examples
 
 

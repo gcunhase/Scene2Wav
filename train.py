@@ -38,8 +38,8 @@ default_params = {
     'seq_len': 1024,
     'weight_norm': True,
     'batch_size': 128,
-    'val_frac': 0.1,
-    'test_frac': 0.0,  # Test has already been separated for COGNIMUSE
+    'val_frac': 0.05,
+    'test_frac': 0.05,  # Test has already been separated for COGNIMUSE
 
     # training parameters
     'keep_old_checkpoints': False,
@@ -49,7 +49,7 @@ default_params = {
     'resume': True,
     'sample_rate': 16000,
     'n_samples': 1,
-    'sample_length': 30000,  # 8s -> 80000
+    'sample_length': 48000,  # 3s -> 30000,  # 8s -> 80000
     'loss_smoothing': 0.99,
     'cuda': True,
     'comet_key': None,

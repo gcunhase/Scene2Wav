@@ -105,7 +105,7 @@ class DataLoader(DataLoaderBase):
                 sequences = batch[:, from_index : to_index]  # (batch_size, 1088)
                 input_sequences = sequences[:, : -1]  # (batch_size, 1087)
                 target_sequences = sequences[:, self.overlap_len :].contiguous()
-                import numpy as np
+                # import numpy as np
                 # print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
 
                 yield (input_sequences, reset, target_sequences)
