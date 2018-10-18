@@ -57,17 +57,23 @@ class NpzDataset(Dataset):
         self.audio_samples = audio[
             int(ratio_min * samples) : int(ratio_max * samples)
         ]
-        print('Audio samples: {}'.format(np.shape(self.audio_samples)))
+        hsl_data = data['HSL_data']
+        samples = len(hsl_data)
+        self.hsl_data_samples = hsl_data[
+                             int(ratio_min * samples): int(ratio_max * samples)]
+        print('Audio samples: {}, hsl data: {}'.format(np.shape(self.audio_samples),
+                                                       np.shape(self.hsl_data_samples)))
 
     def __getitem__(self, index):
         seq = self.audio_samples[index]
+        hsl_data = self.hsl_data_samples[index]
         return torch.cat([
             torch.LongTensor(self.overlap_len) \
                  .fill_(utils.q_zero(self.q_levels)),
             utils.linear_quantize(
                 torch.from_numpy(seq), self.q_levels
             )
-        ])
+        ]), hsl_data
 
     def __len__(self):
         return len(self.audio_samples)
@@ -90,7 +96,10 @@ class DataLoader(DataLoaderBase):
     def __iter__(self):
         ls = super().__len__()
         for i, batch in enumerate(super().__iter__()):
-            (batch_size, n_samples) = batch.size()
+            batch_audio = batch[0]
+            batch_hsl = batch[1]
+            (batch_size, n_samples) = batch_audio.size()
+            batch_size_hsl = batch_hsl.size()
 
             #l = batch.__len__()
             #for b in range(0, batch.__len__()):
@@ -102,13 +111,14 @@ class DataLoader(DataLoaderBase):
             for seq_begin in range(self.overlap_len, n_samples, self.seq_len):
                 from_index = seq_begin - self.overlap_len
                 to_index = seq_begin + self.seq_len
-                sequences = batch[:, from_index : to_index]  # (batch_size, 1088)
+                sequences = batch_audio[:, from_index : to_index]  # (batch_size, 1088)
                 input_sequences = sequences[:, : -1]  # (batch_size, 1087)
                 target_sequences = sequences[:, self.overlap_len :].contiguous()
                 # import numpy as np
                 # print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
-
-                yield (input_sequences, reset, target_sequences)
+                print("batch hsl: {}, input_seq: {}, reset: {}, target_seq: {}"
+                      .format(batch_hsl.size(), np.shape(input_sequences), reset, np.shape(target_sequences)))
+                yield (batch_hsl, input_sequences, reset, target_sequences)
 
                 reset = False
 
