@@ -73,7 +73,7 @@ class NpzDataset(Dataset):
             utils.linear_quantize(
                 torch.from_numpy(seq), self.q_levels
             )
-        ]), hsl_data
+        ]), seq, hsl_data
 
     def __len__(self):
         return len(self.audio_samples)
@@ -97,9 +97,30 @@ class DataLoader(DataLoaderBase):
         ls = super().__len__()
         for i, batch in enumerate(super().__iter__()):
             batch_audio = batch[0]
-            batch_hsl = batch[1]
+            batch_audio_seq = batch[1]
+            batch_hsl = batch[2]
             (batch_size, n_samples) = batch_audio.size()
             batch_size_hsl = batch_hsl.size()
+            batch_size_audio = batch_audio.size()
+
+            # Divide audio into groups of "audio_n_prediction"
+            import math
+            audio_n_prediction = 8
+            batch_audio_48000 = batch_audio_seq  # batch_audio.res[:48000]  # batch_audio
+            s = np.shape(batch_audio_48000)
+            y_audio_dim = int(math.ceil(s[1] / audio_n_prediction))
+            audio_train = np.zeros([s[0], audio_n_prediction, y_audio_dim])
+            for i in range(0, np.shape(audio_train)[0]):
+                k = 0
+                j_final = s[1]  # -audio_n_prediction-1
+                for j in range(0, j_final, audio_n_prediction):
+                    splice_audio = batch_audio_48000[i, j:min(s[1], j + audio_n_prediction)]
+                    audio_train[i, :, k] = splice_audio
+                    k += 1
+
+            print("input: {}, {}, hsl: {}, audio: {}/{}, audio_train: {}".
+                  format(batch_size, n_samples, batch_size_hsl, batch_size_audio,
+                         np.shape(batch_audio_seq), np.shape(audio_train)))
 
             #l = batch.__len__()
             #for b in range(0, batch.__len__()):
@@ -116,9 +137,9 @@ class DataLoader(DataLoaderBase):
                 target_sequences = sequences[:, self.overlap_len :].contiguous()
                 # import numpy as np
                 # print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
-                print("batch hsl: {}, input_seq: {}, reset: {}, target_seq: {}"
-                      .format(batch_hsl.size(), np.shape(input_sequences), reset, np.shape(target_sequences)))
-                yield (batch_hsl, input_sequences, reset, target_sequences)
+                # print("batch hsl: {}, batch hsl: {}, input_seq: {}, reset: {}, target_seq: {}"
+                #       .format(batch_hsl.size(), batch_audio.size(), np.shape(input_sequences), reset, np.shape(target_sequences)))
+                yield (batch_hsl, audio_train, input_sequences, reset, target_sequences)
 
                 reset = False
 

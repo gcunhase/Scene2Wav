@@ -51,7 +51,9 @@ class ValidationPlugin(Plugin):
         loss_sum = 0
         n_examples = 0
         for data in dataset:
-            batch_inputs = data[: -1]
+            batch_hsl = data[0]
+            batch_audio = data[1]
+            batch_inputs = data[2: -1]
             batch_target = data[-1]
             batch_size = batch_target.size()[0]
 
@@ -67,6 +69,8 @@ class ValidationPlugin(Plugin):
             if self.trainer.cuda:
                 batch_target = batch_target.cuda()
 
+            # TODO: CNN-Seq here
+            # batch_output = self.trainer.model(*batch_inputs, hidden=hidden_from_CNNSeq)
             batch_output = self.trainer.model(*batch_inputs)
             loss_sum += self.trainer.criterion(batch_output, batch_target) \
                                     .data[0] * batch_size

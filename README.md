@@ -21,6 +21,8 @@ python setup.py install
 pip install http://download.pytorch.org/whl/cu80/torch-0.4.0-cp35-cp35m-linux_x86_64.whl
 pip install http://download.pytorch.org/whl/cu80/torch-0.4.0-cp36-cp36m-linux_x86_64.whl
 pip install http://download.pytorch.org/whl/cu80/torch-0.4.0-cp36-cp36mu-linux_x86_64.whl
+
+pip install moviepy requests
 ```
 
 ## Datasets
@@ -54,6 +56,28 @@ CUDA_VISIBLE_DEVICES=0,1 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2
 The results - training log, loss plots, model checkpoints and generated samples will be saved in `results/`.
 
 We also have an option to monitor the metrics using [CometML](https://www.comet.ml/). To use it, just pass your API key as `--comet_key` parameter to `train.py`.
+
+## RuntimeError loading state_dict
+* Addition of *module.* at the beginning of parameters' keys makes throws an *unexpected keys* error
+```
+RuntimeError: Error(s) in loading state_dict for ConvNet:
+	Unexpected key(s) in state_dict: "layer1.1.num_batches_tracked", "layer2.1.num_batches_tracked", "layer3.1.num_batches_tracked". 
+```
+
+```python
+from collections import OrderedDict
+pretrained_state = torch.load(PRETRAINED_PATH)
+new_pretrained_state = OrderedDict()
+
+for k, v in pretrained_state.items():
+    layer_name = k.replace("model.", "")
+    new_pretrained_state[layer_name] = v
+    print("k: {}, layer_name: {}, v: {}".format(k, layer_name, np.shape(v)))
+    
+# Load pretrained model
+model.load_state_dict(new_pretrained_state)
+model = model.cuda()
+```
 
 ## Reference
 * [PyTorch implementation of SampleRNN](https://github.com/deepsound-project/samplernn-pytorch)

@@ -42,7 +42,7 @@ new_pretrained_state = OrderedDict()
 for k, v in pretrained_state.items():
     layer_name = k.replace("model.", "")
     new_pretrained_state[layer_name] = v
-    # print("k: {}, layer_name: {}, v: {}".format(k, layer_name, np.shape(v)))
+    print("k: {}, layer_name: {}, v: {}".format(k, layer_name, np.shape(v)))
 
 # Load pretrained model
 model.load_state_dict(new_pretrained_state)

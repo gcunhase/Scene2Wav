@@ -10,7 +10,8 @@ def gradient_clipping(optimizer, min=-1, max=1):
                 loss = closure()
                 for group in optimizer.param_groups:
                     for p in group['params']:
-                        hardtanh(p.grad, min, max, inplace=True)
+                        if p.grad is not None:
+                            hardtanh(p.grad, min, max, inplace=True)
                 return loss
             
             return optimizer.step(closure_wrapper)

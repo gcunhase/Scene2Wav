@@ -5,6 +5,7 @@ except ImportError:
     pass
 
 from model import SampleRNN, Predictor
+from model import CNNSeq2SampleRNN
 from optim import gradient_clipping
 from nn import sequence_nll_loss_bits
 from trainer import Trainer
@@ -27,6 +28,7 @@ from glob import glob
 import re
 import argparse
 import utils
+import pickle
 
 
 default_params = {
@@ -37,7 +39,7 @@ default_params = {
     'q_levels': 256,
     'seq_len': 1024,
     'weight_norm': True,
-    'batch_size': 128,
+    'batch_size': 1,  # 'batch_size': 128,
     'val_frac': 0.05,
     'test_frac': 0.05,  # Test has already been separated for COGNIMUSE
 
@@ -53,7 +55,7 @@ default_params = {
     'loss_smoothing': 0.99,
     'cuda': True,
     'comet_key': None,
-    'npz_filename': 'video_feats_HSL_10fps_pad_train.npz'
+    'npz_filename': 'video_feats_HSL_10fps_pad_train.npz',
 }
 
 tag_params = [
@@ -171,6 +173,7 @@ def main(exp, frame_sizes, dataset, **params):
         weight_norm=params['weight_norm'],
         batch_size=params['batch_size']
     )
+    # model = CNNSeq2SampleRNN(model).cuda()
     predictor = Predictor(model)
     if params['cuda']:
         model = model.cuda()

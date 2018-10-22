@@ -1,7 +1,11 @@
 import torch
 from torch.autograd import Variable
-
+from cnnseq.utils_models import load_json
+from cnnseq.CNNSeq2Seq2 import load_cnnseq2seq, get_hidden_state
+from cnnseq.CNNSeq2Seq2_main import feats_tensor_input, feats_tensor_audio
 import heapq
+import numpy as np
+from model import CNNSeq2SampleRNN
 
 
 # Based on torch.utils.trainer.Trainer code.
@@ -59,7 +63,9 @@ class Trainer(object):
     def train(self):
         for (self.iterations, data) in \
                 enumerate(self.dataset, self.iterations + 1):
-            batch_inputs = data[: -1]
+            batch_hsl = data[0]
+            batch_audio = data[1]
+            batch_inputs = data[2: -1]
             batch_target = data[-1]
             self.call_plugins(
                 'batch', self.iterations, batch_inputs, batch_target
@@ -80,7 +86,11 @@ class Trainer(object):
             plugin_data = [None, None]
 
             def closure():
-                batch_output = self.model(*batch_inputs)
+                # TODO: CNN-Seq here
+                cnnseq_model = CNNSeq2SampleRNN(self.model).cuda()
+                batch_output = cnnseq_model(batch_hsl, batch_audio, batch_inputs)
+                # batch_output = self.model(batch_hsl, batch_audio, batch_inputs)
+                # batch_output = self.model(*batch_inputs)
 
                 loss = self.criterion(batch_output, batch_target)
                 loss.backward()
