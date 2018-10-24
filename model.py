@@ -21,16 +21,18 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         self.num_layers = self.cnnseq2seq_params['num_layers']
         self.samplernn_model = model
 
+        self.batch_size = 1  # self.samplernn_model.model.batch_size
+
         #self.fc = Linear(self.num_layers*1*self.hidden_size,
         #                 self.num_layers*self.samplernn_model.batch_size*self.samplernn_model.dim)
 
         #self.fc = Linear(self.num_layers * 1 * self.hidden_size,
         #                 self.num_layers * self.hidden_size * 1024)  # 2, 128, 1024
 
-        self.fc = Linear(self.num_layers * 1 * self.hidden_size,
-                         self.num_layers * 1 * 1024)  # 2, 128, 1024
+        self.fc = Linear(self.num_layers * self.batch_size * self.hidden_size,
+                         self.num_layers * self.batch_size * 1024)  # 2, 128, 1024
 
-    def forward(self, x, y, batch_inputs):
+    def forward(self, x, y, batch_inputs, reset):  # , reset=False
         # Assume batch_size = 1
         # print("batch_hsl: {}, batch_audio: {}".format(np.shape(x), np.shape(y)))
         batch_hsl_tensor = feats_tensor_input(x, data_type='HSL')
@@ -55,8 +57,12 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_1_proj)
         # hidden_from_CNNSeq_tensor = torch.cat([torch.LongTensor(hidden_from_CNNSeq_0_proj), hidden_from_CNNSeq_1_proj])
         # hidden_cnn = torch.LongTensor(self.model.n_rnn, self.model.batch_size, self.model.dim).fill_(0)
-        batch_output = self.samplernn_model(*batch_inputs, hidden=hidden_from_CNNSeq_0_proj)
+        batch_output = self.samplernn_model(batch_inputs, reset, hidden=hidden_from_CNNSeq_0_proj)
         return batch_output
+
+    @property
+    def lookback(self):
+        return self.samplernn_model.frame_level_rnns[-1].n_frame_samples
 
 
 class SampleRNN(torch.nn.Module):

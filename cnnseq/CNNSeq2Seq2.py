@@ -354,29 +354,12 @@ def get_hidden_state(model, dataloader_test, dataloader_audio_test, params, epoc
     for bs_test, (d, a) in enumerate(zip(dataloader_test.keys(), dataloader_audio_test.keys())):
         data = dataloader_test[d]
         audio = dataloader_audio_test[a]
-        # print("Shapes1 - label: {}, data: {}".format(np.shape(label), np.shape(data)))
         img = data
         target = audio.reshape(-1, np.shape(audio)[-1], params['output_size']).to(params['gpu_num'][0])  # labels.to(device)
         with torch.no_grad():
             img = Variable(img).cuda()
         out, _, _, hidden_enc = model(img, target)
         hidden_enc_arr.append(hidden_enc)
-        # print("Shapes3 - label: {}, out: {}, img: {}".format(np.shape(lab), np.shape(output), np.shape(img)))
-
-        input_data_tmp = img.cpu().data.numpy()
-        target_data_tmp = target.squeeze().cpu().data.numpy()
-        outputs_data_tmp = out.squeeze().cpu().data.numpy()
-        input_reshaped = np.reshape(input_data_tmp, [-1, np.shape(input_data_tmp)[2], np.shape(input_data_tmp)[3],
-                                    np.shape(input_data_tmp)[1]])
-
-        target_reshaped = flatten_audio_with_params(target_data_tmp, params['sequence_length'],
-                                                    params['audio_n_prediction'])
-
-        out_reshaped = flatten_audio_with_params(outputs_data_tmp, params['sequence_length'],
-                                                 params['audio_n_prediction'])
-
-        print("input_reshaped: {}, out_reshaped: {}, target_reshaped: {}".
-              format(np.shape(input_reshaped), np.shape(out_reshaped), np.shape(target_reshaped)))
 
     return hidden_enc_arr
 

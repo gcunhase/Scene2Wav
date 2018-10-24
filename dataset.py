@@ -103,6 +103,8 @@ class DataLoader(DataLoaderBase):
             batch_size_hsl = batch_hsl.size()
             batch_size_audio = batch_audio.size()
 
+            # print("audio: {}, hsl: {}, audio2: {}".format(batch_audio.size(), batch_size_hsl, batch_size_audio))
+
             # Divide audio into groups of "audio_n_prediction"
             import math
             audio_n_prediction = 8
@@ -118,9 +120,9 @@ class DataLoader(DataLoaderBase):
                     audio_train[i, :, k] = splice_audio
                     k += 1
 
-            print("input: {}, {}, hsl: {}, audio: {}/{}, audio_train: {}".
-                  format(batch_size, n_samples, batch_size_hsl, batch_size_audio,
-                         np.shape(batch_audio_seq), np.shape(audio_train)))
+            # print("input: {}, {}, hsl: {}, audio: {}/{}, audio_train: {}".
+            #      format(batch_size, n_samples, batch_size_hsl, batch_size_audio,
+            #             np.shape(batch_audio_seq), np.shape(audio_train)))
 
             #l = batch.__len__()
             #for b in range(0, batch.__len__()):

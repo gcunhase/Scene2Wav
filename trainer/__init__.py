@@ -12,8 +12,9 @@ from model import CNNSeq2SampleRNN
 # Allows multiple inputs to the model, not all need to be Tensors.
 class Trainer(object):
 
-    def __init__(self, model, criterion, optimizer, dataset, cuda=False):
+    def __init__(self, model, model_cnnseq2sample, criterion, optimizer, dataset, cuda=False):
         self.model = model
+        self.model_cnnseq2sample = model_cnnseq2sample
         self.criterion = criterion
         self.optimizer = optimizer
         self.dataset = dataset
@@ -86,10 +87,22 @@ class Trainer(object):
             plugin_data = [None, None]
 
             def closure():
-                # TODO: CNN-Seq here
-                cnnseq_model = CNNSeq2SampleRNN(self.model).cuda()
-                batch_output = cnnseq_model(batch_hsl, batch_audio, batch_inputs)
-                # batch_output = self.model(batch_hsl, batch_audio, batch_inputs)
+                # TODO: CNN-Seq here, for with batch size?
+                # cnnseq_model = CNNSeq2SampleRNN(self.model).cuda()
+                reset = batch_inputs[1]
+                for e, (b, a, i) in enumerate(zip(batch_hsl, batch_audio, batch_inputs[0])):
+                    b = np.expand_dims(b, 0)  # b.unsqueeze(0)
+                    a = np.expand_dims(a, 0)  # a.unsqueeze(0)
+                    i = i.unsqueeze(0)
+                    # print("b: {}, a: {}, i: {}".format(np.shape(b), np.shape(a), np.shape(i)))
+                    o = self.model_cnnseq2sample(b, a, i, reset)
+                    if e == 0:
+                        batch_output = o
+                    else:
+                        batch_output = torch.cat((batch_output, o), 0)
+                    # print(np.shape(batch_output))
+                # print("hsl: {}, audio: {}, inputs: {}".format(np.shape(batch_hsl), np.shape(batch_audio), np.shape(batch_inputs[0])))
+                # batch_output = self.model(batch_hsl, batch_audio, batch_inputs)  # , reset=batch_inputs[1]
                 # batch_output = self.model(*batch_inputs)
 
                 loss = self.criterion(batch_output, batch_target)

@@ -39,7 +39,7 @@ default_params = {
     'q_levels': 256,
     'seq_len': 1024,
     'weight_norm': True,
-    'batch_size': 1,  # 'batch_size': 128,
+    'batch_size': 64,  # 'batch_size': 128, 64
     'val_frac': 0.05,
     'test_frac': 0.05,  # Test has already been separated for COGNIMUSE
 
@@ -173,11 +173,13 @@ def main(exp, frame_sizes, dataset, **params):
         weight_norm=params['weight_norm'],
         batch_size=params['batch_size']
     )
-    # model = CNNSeq2SampleRNN(model).cuda()
+    print("CUDA num: {}".format(torch.cuda.device_count()))
     predictor = Predictor(model)
     if params['cuda']:
         model = model.cuda()
         predictor = predictor.cuda()
+
+    model_cnnseq2sample = CNNSeq2SampleRNN(predictor).cuda()
 
     optimizer = gradient_clipping(torch.optim.Adam(predictor.parameters()))
 
@@ -186,7 +188,7 @@ def main(exp, frame_sizes, dataset, **params):
     val_split = test_split - params['val_frac']
 
     trainer = Trainer(
-        predictor, sequence_nll_loss_bits, optimizer,
+        predictor, model_cnnseq2sample, sequence_nll_loss_bits, optimizer,
         data_loader(0, val_split, eval=False),
         cuda=params['cuda']
     )
