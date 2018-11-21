@@ -39,9 +39,9 @@ default_params = {
     'q_levels': 256,
     'seq_len': 1024,
     'weight_norm': True,
-    'batch_size': 64,  # 'batch_size': 128, 64
-    'val_frac': 0.05,
-    'test_frac': 0.05,  # Test has already been separated for COGNIMUSE
+    'batch_size': 128,  # 'batch_size': 128, 64
+    'val_frac': 0.5,  # 0.05,
+    'test_frac': 0.5,  # 0,  # Test has already been separated for COGNIMUSE
 
     # training parameters
     'keep_old_checkpoints': False,
@@ -55,13 +55,17 @@ default_params = {
     'loss_smoothing': 0.99,
     'cuda': True,
     'comet_key': None,
-    'npz_filename': 'video_feats_HSL_10fps_pad_train.npz',
+    # 'npz_filename': 'video_feats_HSL_10fps_pad_train.npz',
+    # 'npz_filename_test': 'video_feats_HSL_10fps_pad_test.npz',
+    'npz_filename': 'video_feats_HSL_10fps_origAudio_pad_train.npz',
+    'npz_filename_test': 'video_feats_HSL_10fps_origAudio_pad_test.npz',
 }
 
 tag_params = [
     'exp', 'frame_sizes', 'n_rnn', 'dim', 'learn_h0', 'q_levels', 'seq_len',
     'batch_size', 'dataset', 'val_frac', 'test_frac'
 ]
+
 
 def param_to_string(value):
     if isinstance(value, bool):
@@ -71,12 +75,14 @@ def param_to_string(value):
     else:
         return str(value)
 
+
 def make_tag(params):
     return '-'.join(
         key + ':' + param_to_string(params[key])
         for key in tag_params
         if key not in default_params or params[key] != default_params[key]
     )
+
 
 def setup_results_dir(params):
     def ensure_dir_exists(path):
@@ -98,16 +104,22 @@ def setup_results_dir(params):
 
     return results_path
 
-def load_last_checkpoint(checkpoints_path):
+
+# Includes load CNNSeq2Sample
+def load_last_checkpoint(checkpoints_path, model_type='samplernn'):
+    if model_type == 'samplernn':
+        pattern = SaverPlugin.last_pattern
+    else:
+        pattern = SaverPlugin.last_pattern_cnnseq2sample
     checkpoints_pattern = os.path.join(
-        checkpoints_path, SaverPlugin.last_pattern.format('*', '*')
+        checkpoints_path, pattern.format('*', '*')
     )
     checkpoint_paths = natsorted(glob(checkpoints_pattern))
     if len(checkpoint_paths) > 0:
         checkpoint_path = checkpoint_paths[-1]
         checkpoint_name = os.path.basename(checkpoint_path)
         match = re.match(
-            SaverPlugin.last_pattern.format(r'(\d+)', r'(\d+)'),
+            pattern.format(r'(\d+)', r'(\d+)'),
             checkpoint_name
         )
         epoch = int(match.group(1))
@@ -115,6 +127,7 @@ def load_last_checkpoint(checkpoints_path):
         return (torch.load(checkpoint_path), epoch, iteration)
     else:
         return None
+
 
 def tee_stdout(log_path):
     log_file = open(log_path, 'a', 1)
@@ -132,8 +145,10 @@ def tee_stdout(log_path):
 
     sys.stdout = Tee()
 
-def make_data_loader(overlap_len, params):
-    path = os.path.join(params['datasets_path'], params['dataset'], params['npz_filename'])
+
+def make_data_loader(overlap_len, params, npz_filename=None):
+    npz_filename = params['npz_filename'] if npz_filename is None else npz_filename
+    path = os.path.join(params['datasets_path'], params['dataset'], npz_filename)
     def data_loader(split_from, split_to, eval):
         dataset = NpzDataset(
             path, overlap_len, params['q_levels'], split_from, split_to
@@ -147,6 +162,7 @@ def make_data_loader(overlap_len, params):
             drop_last=(not eval)
         )
     return data_loader
+
 
 def main(exp, frame_sizes, dataset, **params):
     params = dict(
@@ -179,34 +195,42 @@ def main(exp, frame_sizes, dataset, **params):
         model = model.cuda()
         predictor = predictor.cuda()
 
-    model_cnnseq2sample = CNNSeq2SampleRNN(predictor).cuda()
+    model_cnnseq2sample = CNNSeq2SampleRNN().cuda()
 
     optimizer = gradient_clipping(torch.optim.Adam(predictor.parameters()))
 
     data_loader = make_data_loader(model.lookback, params)
-    test_split = 1 - params['test_frac']
-    val_split = test_split - params['val_frac']
+    data_loader_test = make_data_loader(model.lookback, params, npz_filename=params['npz_filename_test'])
+    # test_split = 1 - params['test_frac']
+    # val_split = test_split - params['val_frac']
 
     trainer = Trainer(
         predictor, model_cnnseq2sample, sequence_nll_loss_bits, optimizer,
-        data_loader(0, val_split, eval=False),
+        # data_loader(0, val_split, eval=False),
+        data_loader(0, 1, eval=False),
         cuda=params['cuda']
     )
 
     checkpoints_path = os.path.join(results_path, 'checkpoints')
     checkpoint_data = load_last_checkpoint(checkpoints_path)
+    checkpoint_data_cnnseq2sample = load_last_checkpoint(checkpoints_path, model_type='cnnseq2sample')
     if checkpoint_data is not None:
         (state_dict, epoch, iteration) = checkpoint_data
+        (state_dict_cnnseq2sample, epoch, iteration) = checkpoint_data_cnnseq2sample
         trainer.epochs = epoch
         trainer.iterations = iteration
         predictor.load_state_dict(state_dict)
+        model_cnnseq2sample.load_state_dict(state_dict_cnnseq2sample)
 
     trainer.register_plugin(TrainingLossMonitor(
         smoothing=params['loss_smoothing']
     ))
     trainer.register_plugin(ValidationPlugin(
-        data_loader(val_split, test_split, eval=True),
-        data_loader(test_split, 1, eval=True)
+        # data_loader(val_split, test_split, eval=True),
+        # data_loader_test(0, 1, eval=True)
+        data_loader_test(0, params['val_frac'], eval=True),
+        data_loader_test(params['val_frac'], 1, eval=True)
+        # data_loader(test_split, 1, eval=True)
     ))
     trainer.register_plugin(AbsoluteTimeMonitor())
     trainer.register_plugin(SaverPlugin(
