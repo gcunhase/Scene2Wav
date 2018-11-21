@@ -54,26 +54,36 @@ class NpzDataset(Dataset):
         data = np.load(path)
         audio = data['audio']
         samples = len(audio)
-        self.audio_samples = audio[
-            int(ratio_min * samples) : int(ratio_max * samples)
-        ]
+        self.audio_samples = audio[int(ratio_min * samples) : int(ratio_max * samples)]
+
         hsl_data = data['HSL_data']
         samples = len(hsl_data)
-        self.hsl_data_samples = hsl_data[
-                             int(ratio_min * samples): int(ratio_max * samples)]
-        print('Audio samples: {}, hsl data: {}'.format(np.shape(self.audio_samples),
-                                                       np.shape(self.hsl_data_samples)))
+        self.hsl_data_samples = hsl_data[int(ratio_min * samples): int(ratio_max * samples)]
+
+        emotion = data['emotion']
+        samples = len(emotion)
+        self.emotion_samples = emotion[int(ratio_min * samples): int(ratio_max * samples)]
+
+        text = data['text']
+        samples = len(text)
+        self.text_samples = text[int(ratio_min * samples): int(ratio_max * samples)]
+        print('Audio samples: {}, hsl data: {}, emotion: {}, text: {}'.
+              format(np.shape(self.audio_samples), np.shape(self.hsl_data_samples), np.shape(self.emotion_samples),
+                     np.shape(self.text_samples)))
 
     def __getitem__(self, index):
         seq = self.audio_samples[index]
         hsl_data = self.hsl_data_samples[index]
+        emotion = self.emotion_samples[index]
+        text = self.text_samples[index]
+        text = text.decode('utf-8') if isinstance(text, bytes) else text
         return torch.cat([
             torch.LongTensor(self.overlap_len) \
                  .fill_(utils.q_zero(self.q_levels)),
             utils.linear_quantize(
                 torch.from_numpy(seq), self.q_levels
             )
-        ]), seq, hsl_data
+        ]), seq, hsl_data, emotion, text
 
     def __len__(self):
         return len(self.audio_samples)
@@ -99,11 +109,14 @@ class DataLoader(DataLoaderBase):
             batch_audio = batch[0]
             batch_audio_seq = batch[1]
             batch_hsl = batch[2]
+            emotion = batch[3]
+            text = batch[4]
             (batch_size, n_samples) = batch_audio.size()
             batch_size_hsl = batch_hsl.size()
             batch_size_audio = batch_audio.size()
 
-            # print("audio: {}, hsl: {}, audio2: {}".format(batch_audio.size(), batch_size_hsl, batch_size_audio))
+            print("audio: {}, hsl: {}, audio2: {}, emotion: {}, text: {}".
+                  format(batch_audio.size(), batch_size_hsl, batch_size_audio, emotion.size(), len(text)))
 
             # Divide audio into groups of "audio_n_prediction"
             import math
@@ -111,6 +124,10 @@ class DataLoader(DataLoaderBase):
             batch_audio_48000 = batch_audio_seq  # batch_audio.res[:48000]  # batch_audio
             s = np.shape(batch_audio_48000)
             y_audio_dim = int(math.ceil(s[1] / audio_n_prediction))
+            print("Shape {}, audio_dim {}".format(s, y_audio_dim))
+            audio_train = np.reshape(batch_audio_48000, [s[0], audio_n_prediction, y_audio_dim])
+            print(np.shape(audio_train))
+            '''
             audio_train = np.zeros([s[0], audio_n_prediction, y_audio_dim])
             for i in range(0, np.shape(audio_train)[0]):
                 k = 0
@@ -119,6 +136,7 @@ class DataLoader(DataLoaderBase):
                     splice_audio = batch_audio_48000[i, j:min(s[1], j + audio_n_prediction)]
                     audio_train[i, :, k] = splice_audio
                     k += 1
+            '''
 
             # print("input: {}, {}, hsl: {}, audio: {}/{}, audio_train: {}".
             #      format(batch_size, n_samples, batch_size_hsl, batch_size_audio,
@@ -141,7 +159,7 @@ class DataLoader(DataLoaderBase):
                 # print("in: {}, tar: {}".format(np.shape(input_sequences), np.shape(target_sequences)))
                 # print("batch hsl: {}, batch hsl: {}, input_seq: {}, reset: {}, target_seq: {}"
                 #       .format(batch_hsl.size(), batch_audio.size(), np.shape(input_sequences), reset, np.shape(target_sequences)))
-                yield (batch_hsl, audio_train, input_sequences, reset, target_sequences)
+                yield (batch_hsl, audio_train, emotion, text, input_sequences, reset, target_sequences)
 
                 reset = False
 

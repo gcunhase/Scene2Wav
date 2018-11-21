@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 
-from model import Generator
+from model import Generator, GeneratorCNNSeq2Sample
 
 import torch
 from torch.autograd import Variable
@@ -16,6 +16,10 @@ from glob import glob
 import os
 import pickle
 import time
+import numpy as np
+from cnnseq import utils
+from moviepy.editor import VideoClip, ImageSequenceClip
+from moviepy.audio.AudioClip import AudioArrayClip
 
 
 class TrainingLossMonitor(LossMonitor):
@@ -53,7 +57,9 @@ class ValidationPlugin(Plugin):
         for data in dataset:
             batch_hsl = data[0]
             batch_audio = data[1]
-            batch_inputs = data[2: -1]
+            batch_emotion = data[2]
+            batch_text = data[3]
+            batch_inputs = data[4: -1]
             batch_target = data[-1]
             batch_size = batch_target.size()[0]
 
@@ -71,7 +77,17 @@ class ValidationPlugin(Plugin):
 
             # TODO: CNN-Seq here
             # batch_output = self.trainer.model(*batch_inputs, hidden=hidden_from_CNNSeq)
-            batch_output = self.trainer.model(*batch_inputs)
+            for e, (b, a) in enumerate(zip(batch_hsl, batch_audio)):
+                b = np.expand_dims(b, 0)
+                a = np.expand_dims(a, 0)
+                h = self.trainer.model_cnnseq2sample(b, a)
+                if e == 0:
+                    batch_hidden = h
+                else:
+                    batch_hidden = torch.cat((batch_hidden, h), 1)
+                    # print(np.shape(batch_output))
+            batch_output = self.trainer.model(*batch_inputs, hidden=batch_hidden)
+            # batch_output = self.trainer.model(*batch_inputs)
             loss_sum += self.trainer.criterion(batch_output, batch_target) \
                                     .data[0] * batch_size
 
@@ -103,6 +119,8 @@ class SaverPlugin(Plugin):
 
     last_pattern = 'ep{}-it{}'
     best_pattern = 'best-ep{}-it{}'
+    last_pattern_cnnseq2sample = 'cnnseq2sample-ep{}-it{}'
+    best_pattern_cnnseq2sample = 'cnnseq2sample-best-ep{}-it{}'
 
     def __init__(self, checkpoints_path, keep_old_checkpoints):
         super().__init__([(1, 'epoch')])
@@ -116,6 +134,8 @@ class SaverPlugin(Plugin):
     def epoch(self, epoch_index):
         if not self.keep_old_checkpoints:
             self._clear(self.last_pattern.format('*', '*'))
+            self._clear(self.last_pattern_cnnseq2sample.format('*', '*'))
+        # Save SampleRNN model
         torch.save(
             self.trainer.model.state_dict(),
             os.path.join(
@@ -123,15 +143,33 @@ class SaverPlugin(Plugin):
                 self.last_pattern.format(epoch_index, self.trainer.iterations)
             )
         )
+        # Save CNNSeq2SampleRNN full model
+        torch.save(
+            self.trainer.model_cnnseq2sample.state_dict(),
+            os.path.join(
+                self.checkpoints_path,
+                self.last_pattern_cnnseq2sample.format(epoch_index, self.trainer.iterations)
+            )
+        )
 
         cur_val_loss = self.trainer.stats['validation_loss']['last']
         if cur_val_loss < self._best_val_loss:
             self._clear(self.best_pattern.format('*', '*'))
+            self._clear(self.best_pattern_cnnseq2sample.format('*', '*'))
             torch.save(
                 self.trainer.model.state_dict(),
                 os.path.join(
                     self.checkpoints_path,
                     self.best_pattern.format(
+                        epoch_index, self.trainer.iterations
+                    )
+                )
+            )
+            torch.save(
+                self.trainer.model_cnnseq2sample.state_dict(),
+                os.path.join(
+                    self.checkpoints_path,
+                    self.best_pattern_cnnseq2sample.format(
                         epoch_index, self.trainer.iterations
                     )
                 )
@@ -173,6 +211,65 @@ class GeneratorPlugin(Plugin):
                 ),
                 samples[i, :], sr=self.sample_rate, norm=True
             )
+
+
+class GeneratorCNNSeq2SamplePlugin(Plugin):
+
+    pattern = 'ep{}-s{}-em{}.wav'
+    pattern_target_audio = 'ep{}-s{}-em{}_targetAudio.wav'
+    pattern_video = 'ep{}-s{}-em{}.avi'
+    pattern_video_target_audio = 'ep{}-s{}-em{}_targetAudio.avi'
+
+    def __init__(self, samples_path, n_samples, sample_length, sample_rate):
+        super().__init__([(1, 'epoch')])
+        self.samples_path = samples_path
+        self.n_samples = n_samples
+        self.sample_length = sample_length
+        self.sample_rate = sample_rate
+
+    # New register to accept model and cuda setting (which tells whether we should use GPU or not)
+    # -> audio generation after training
+    def register_generate(self, model, model_cnnseq2sample, cuda):
+        generator = Generator(model, cuda)
+        self.generate_cnnseq2sample = GeneratorCNNSeq2Sample(generator, model_cnnseq2sample, cuda)
+
+    def epoch(self, test_data_loader, epoch_index):
+        # samples = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length) \
+        #               .cpu().float().numpy()
+        samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length)
+        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}".
+              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, emotion))
+        for i in range(self.n_samples):
+            filename_sample = os.path.join(self.samples_path,
+                                           self.pattern.format(epoch_index, i + 1, emotion[i]))
+            write_wav(filename_sample, samples[i, :], sr=self.sample_rate, norm=True)
+
+            filename_target_audio = os.path.join(self.samples_path, self.pattern_target_audio.format(epoch_index, i + 1, emotion[i]))
+            write_wav(filename_target_audio, target_audio[i], sr=self.sample_rate, norm=True)
+
+            # Save input as video with audio as samples
+            print(np.shape(np.array(input[i]).squeeze()))
+            input_reshaped = np.array(input[i]).squeeze()
+
+            from skimage import color
+            frame_arr = []
+            for frame in input_reshaped:
+                frame = np.swapaxes(np.swapaxes(frame, 0, 1), 1, 2)  # np.transpose(frame)  # 100, 100, 3
+                frame = utils.normalize(frame, min=0, max=1)
+                frame_rgb = color.hsv2rgb(frame)
+                frame_arr.append(frame_rgb * 255)
+            print("frame_arr: {}, min: {}, max: {}".
+                  format(np.shape(frame_arr), np.amin(frame_arr), np.amax(frame_arr)))
+            clip = ImageSequenceClip(np.array(frame_arr), fps=10)  # 3-second clip, .tolist()
+            # audio_sample = np.expand_dims(samples[i], 0)  # samples[i, :]
+            # clip.set_audio(AudioArrayClip(audio_sample, fps=16000))
+            filename = os.path.join(self.samples_path, self.pattern_video.format(epoch_index, i + 1, emotion[i]))
+            clip.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_sample)  # export as video
+
+            # audio_sample = np.expand_dims(target_audio[i], 0)  # target_audio[i, :]
+            # clip.set_audio(AudioArrayClip(audio_sample, fps=16000))
+            filename = os.path.join(self.samples_path, self.pattern_video_target_audio.format(epoch_index, i + 1, emotion[i]))
+            clip.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_target_audio)  # export as video
 
 
 class StatsPlugin(Plugin):

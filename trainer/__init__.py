@@ -66,7 +66,9 @@ class Trainer(object):
                 enumerate(self.dataset, self.iterations + 1):
             batch_hsl = data[0]
             batch_audio = data[1]
-            batch_inputs = data[2: -1]
+            batch_emotion = data[2]
+            batch_text = data[3]
+            batch_inputs = data[4: -1]
             batch_target = data[-1]
             self.call_plugins(
                 'batch', self.iterations, batch_inputs, batch_target
@@ -87,24 +89,18 @@ class Trainer(object):
             plugin_data = [None, None]
 
             def closure():
-                # TODO: CNN-Seq here, for with batch size?
-                # cnnseq_model = CNNSeq2SampleRNN(self.model).cuda()
-                reset = batch_inputs[1]
-                for e, (b, a, i) in enumerate(zip(batch_hsl, batch_audio, batch_inputs[0])):
+                # CNN-Seq2Sample here
+                for e, (b, a) in enumerate(zip(batch_hsl, batch_audio)):
                     b = np.expand_dims(b, 0)  # b.unsqueeze(0)
                     a = np.expand_dims(a, 0)  # a.unsqueeze(0)
-                    i = i.unsqueeze(0)
                     # print("b: {}, a: {}, i: {}".format(np.shape(b), np.shape(a), np.shape(i)))
-                    o = self.model_cnnseq2sample(b, a, i, reset)
+                    h = self.model_cnnseq2sample(b, a)
                     if e == 0:
-                        batch_output = o
+                        batch_hidden = h
                     else:
-                        batch_output = torch.cat((batch_output, o), 0)
+                        batch_hidden = torch.cat((batch_hidden, h), 1)  # concat on position 1
                     # print(np.shape(batch_output))
-                # print("hsl: {}, audio: {}, inputs: {}".format(np.shape(batch_hsl), np.shape(batch_audio), np.shape(batch_inputs[0])))
-                # batch_output = self.model(batch_hsl, batch_audio, batch_inputs)  # , reset=batch_inputs[1]
-                # batch_output = self.model(*batch_inputs)
-
+                batch_output = self.model(*batch_inputs, hidden=batch_hidden)
                 loss = self.criterion(batch_output, batch_target)
                 loss.backward()
 

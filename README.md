@@ -9,9 +9,9 @@
 
 This code requires Python 3.5+ and PyTorch 0.1.12+ (try last three options below). Installation instructions for PyTorch are available on their website: http://pytorch.org/. You can install the rest of the dependencies by running `pip install -r requirements.txt`.
 ```bash
+apt-get install ffmpeg
 pip install --upgrade pip
-pip install -U numpy scipy matplotlib natsort
-pip install librosa
+pip install -U numpy scipy matplotlib natsort scikit-image librosa
 
 git clone https://github.com/librosa/librosa
 cd librosa
@@ -77,6 +77,12 @@ for k, v in pretrained_state.items():
 # Load pretrained model
 model.load_state_dict(new_pretrained_state)
 model = model.cuda()
+```
+
+## Note
+* In *moviepy*'s *ImageSequenceClip.py*:
+```
+if isinstance(sequence, list) or isinstance(sequence, np.ndarray)
 ```
 
 ## Reference
