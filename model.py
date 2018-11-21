@@ -12,14 +12,13 @@ from cnnseq.CNNSeq2Seq2_main import feats_tensor_input, feats_tensor_audio
 
 
 class CNNSeq2SampleRNN(torch.nn.Module):
-    def __init__(self, model):
+    def __init__(self):
         super(CNNSeq2SampleRNN, self).__init__()
 
         # Load pre-trained CNN-Seq2Seq
         self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq()
         self.hidden_size = self.cnnseq2seq_params['hidden_size']
         self.num_layers = self.cnnseq2seq_params['num_layers']
-        self.samplernn_model = model
 
         self.batch_size = 1  # self.samplernn_model.model.batch_size
 
@@ -32,7 +31,7 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         self.fc = Linear(self.num_layers * self.batch_size * self.hidden_size,
                          self.num_layers * self.batch_size * 1024)  # 2, 128, 1024
 
-    def forward(self, x, y, batch_inputs, reset):  # , reset=False
+    def forward(self, x, y):
         # Assume batch_size = 1
         # print("batch_hsl: {}, batch_audio: {}".format(np.shape(x), np.shape(y)))
         batch_hsl_tensor = feats_tensor_input(x, data_type='HSL')
@@ -57,8 +56,7 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_1_proj)
         # hidden_from_CNNSeq_tensor = torch.cat([torch.LongTensor(hidden_from_CNNSeq_0_proj), hidden_from_CNNSeq_1_proj])
         # hidden_cnn = torch.LongTensor(self.model.n_rnn, self.model.batch_size, self.model.dim).fill_(0)
-        batch_output = self.samplernn_model(batch_inputs, reset, hidden=hidden_from_CNNSeq_0_proj)
-        return batch_output
+        return hidden_from_CNNSeq_0_proj
 
     @property
     def lookback(self):
@@ -314,7 +312,7 @@ class Generator(Runner):
         super().__init__(model)
         self.cuda = cuda
 
-    def __call__(self, n_seqs, seq_len, initial_seq=None, hidden=None):
+    def __call__(self, n_seqs, seq_len, initial_seq=None, hidden=None, verbose=False):
         # generation doesn't work with CUDNN for some reason
         torch.backends.cudnn.enabled = False
 
@@ -353,7 +351,8 @@ class Generator(Runner):
 
                 l = len(self.model.frame_level_rnns) - 1
                 if tier_index == l:
-                    print("No upper tier conditioning")
+                    if verbose:
+                        print("No upper tier conditioning")
                     upper_tier_conditioning = None
                 else:
                     frame_index = (i // rnn.n_frame_samples) % \
@@ -361,12 +360,14 @@ class Generator(Runner):
                     upper_tier_conditioning = \
                         frame_level_outputs[tier_index + 1][:, frame_index, :] \
                                            .unsqueeze(1)
-                    print("Frame index {}, upper_tier_conditioning shape {}".format(frame_index, np.shape(upper_tier_conditioning)))
+                    if verbose:
+                        print("Frame index {}, upper_tier_conditioning shape {}".format(frame_index, np.shape(upper_tier_conditioning)))
 
                 frame_level_outputs[tier_index] = self.run_rnn(
                     rnn, prev_samples, upper_tier_conditioning
                 )
-                print("Tier {} frame level outputs shape {}".format(tier_index, np.shape(frame_level_outputs[tier_index])))
+                if verbose:
+                    print("Tier {} frame level outputs shape {}".format(tier_index, np.shape(frame_level_outputs[tier_index])))
 
             # print(sequences[:, i - bottom_frame_size : i])
             prev_samples = torch.autograd.Variable(
@@ -381,11 +382,53 @@ class Generator(Runner):
                                       .unsqueeze(1)
             sample_dist = self.model.sample_level_mlp(prev_samples, upper_tier_conditioning)
             sample_dist = sample_dist.squeeze(1).exp_().data
-            print("Sample dist {}".format(np.shape(sample_dist)))
-            print("Before: {}".format(sequences[:, i]))
+            if verbose:
+                print("Sample dist {}".format(np.shape(sample_dist)))
+                print("Before: {}".format(sequences[:, i]))
             sequences[:, i] = sample_dist.multinomial(1).squeeze(1)
-            print("After {}".format(sequences[:, i]))
+            if verbose:
+                print("After {}".format(sequences[:, i]))
 
         torch.backends.cudnn.enabled = True
 
         return sequences[:, self.model.lookback :]
+
+
+class GeneratorCNNSeq2Sample:
+
+    def __init__(self, generator, model_cnnseq2sample, cuda=False):
+        self.generator = generator
+        self.cuda = cuda
+        self.model_cnnseq2sample = model_cnnseq2sample
+
+    def __call__(self, test_data_loader, n_seqs, seq_len):
+        for e, data in enumerate(test_data_loader):
+            batch_hsl = data[0]
+            batch_audio = data[1]
+            batch_emotion = data[2]
+            batch_text = data[3]
+            batch_inputs = data[4: -1]
+            batch_target = data[-1]
+            break
+
+        # CNN-Seq2Sample here
+        input, target_audio, emotion = [], [], []
+        for e, (b, a, em) in enumerate(zip(batch_hsl, batch_audio, batch_emotion)):
+            if e >= n_seqs:
+                break
+            b = np.expand_dims(b, 0)  # b.unsqueeze(0)
+            a = np.expand_dims(a, 0)  # a.unsqueeze(0)
+            #  print("b: {}, a: {}, i: {}".format(np.shape(b), np.shape(a), np.shape(i)))
+            h = self.model_cnnseq2sample(b, a)
+            if e == 0:
+                batch_hidden = h
+            else:
+                batch_hidden = torch.cat((batch_hidden, h), 1)  # concat on position 1
+                #  print(np.shape(batch_output))
+            # batch_output = model(*batch_inputs, hidden=batch_hidden)
+            input.append(b)
+            target_audio.append(np.array(np.reshape(a, [-1, seq_len])).squeeze())
+            emotion.append(em)
+            # TODO: self.generator should be in the for loop
+        samples = self.generator(n_seqs, seq_len, hidden=batch_hidden).cpu().float().numpy()
+        return samples, input, target_audio, emotion
