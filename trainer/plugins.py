@@ -233,16 +233,32 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
         generator = Generator(model, cuda)
         self.generate_cnnseq2sample = GeneratorCNNSeq2Sample(generator, model_cnnseq2sample, cuda)
 
-    def epoch(self, test_data_loader, epoch_index):
+    def epoch(self, test_data_loader, epoch_index, desired_emotion=None):
         # samples = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length) \
         #               .cpu().float().numpy()
-        samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length)
+        # samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length)
+        samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, 100, self.sample_length)
         print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}".
               format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, emotion))
+
+        # Check desired emotion
+        samples_em, input_em, target_em, emotion_em = [], [], [], []
+        if desired_emotion is not None:
+            for s, i, t, e in zip(samples, input, target_audio, emotion):
+                if e.data.numpy() == desired_emotion:
+                    samples_em.append(s)
+                    input_em.append(i)
+                    target_em.append(t)
+                    emotion_em.append(e)
+            samples, input, target_audio, emotion = np.array(samples_em), np.array(input_em), np.array(target_em), np.array(emotion_em)
+        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}".
+              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, emotion))
+
         for i in range(self.n_samples):
             filename_sample = os.path.join(self.samples_path,
                                            self.pattern.format(epoch_index, i + 1, emotion[i]))
-            write_wav(filename_sample, samples[i, :], sr=self.sample_rate, norm=True)
+            # write_wav(filename_sample, samples[i, :], sr=self.sample_rate, norm=True)
+            write_wav(filename_sample, samples[i], sr=self.sample_rate, norm=True)
 
             filename_target_audio = os.path.join(self.samples_path, self.pattern_target_audio.format(epoch_index, i + 1, emotion[i]))
             write_wav(filename_target_audio, target_audio[i], sr=self.sample_rate, norm=True)
