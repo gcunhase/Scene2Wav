@@ -59,6 +59,8 @@ default_params = {
     # 'npz_filename_test': 'video_feats_HSL_10fps_pad_test.npz',
     'npz_filename': 'video_feats_HSL_10fps_origAudio_pad_train.npz',
     'npz_filename_test': 'video_feats_HSL_10fps_origAudio_pad_test.npz',
+    'cnn_pretrain': 'cnnseq/cnn2_origAudio_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_76.78perf/',
+    'cnn_seq2seq_pretrain': 'cnnseq/cnnseq2seq2_origAudio_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3182_testSize_1139_cost_audio/',
 }
 
 tag_params = [
@@ -195,7 +197,7 @@ def main(exp, frame_sizes, dataset, **params):
         model = model.cuda()
         predictor = predictor.cuda()
 
-    model_cnnseq2sample = CNNSeq2SampleRNN().cuda()
+    model_cnnseq2sample = CNNSeq2SampleRNN(params).cuda()
 
     optimizer = gradient_clipping(torch.optim.Adam(predictor.parameters()))
 
@@ -360,6 +362,18 @@ if __name__ == '__main__':
     parser.add_argument(
         '--sample_length', type=int,
         help='length of each generated sample (in samples)'
+    )
+    parser.add_argument(
+        '--npz_filename', help='Filename with npz data for train'
+    )
+    parser.add_argument(
+        '--cnn_pretrain', help='Filename with pretrained CNN'
+    )
+    parser.add_argument(
+        '--cnn_seq2seq_pretrain', help='Filename with pretrained CNN-Seq2Seq'
+    )
+    parser.add_argument(
+        '--npz_filename_test', help='Filename with npz data for test'
     )
     parser.add_argument(
         '--loss_smoothing', type=float,

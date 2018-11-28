@@ -12,11 +12,11 @@ from cnnseq.CNNSeq2Seq2_main import feats_tensor_input, feats_tensor_audio
 
 
 class CNNSeq2SampleRNN(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, params):
         super(CNNSeq2SampleRNN, self).__init__()
 
         # Load pre-trained CNN-Seq2Seq
-        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq()
+        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq(params)
         self.hidden_size = self.cnnseq2seq_params['hidden_size']
         self.num_layers = self.cnnseq2seq_params['num_layers']
 
