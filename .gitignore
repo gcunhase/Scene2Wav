@@ -4,6 +4,7 @@ datasets/*
 librosa/*
 cnnseq/*res*/*
 results/*
+data_analysis/results*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

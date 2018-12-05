@@ -16,8 +16,8 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         super(CNNSeq2SampleRNN, self).__init__()
 
         # Load pre-trained CNN-Seq2Seq
-        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq(params)
-        self.hidden_size = self.cnnseq2seq_params['hidden_size']
+        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq(params['cnn_pretrain'], params['cnn_seq2seq_pretrain'])
+        self.hidden_size = self.cnnseq2seq_params['hidden_size']  # 128
         self.num_layers = self.cnnseq2seq_params['num_layers']
 
         self.batch_size = 1  # self.samplernn_model.model.batch_size

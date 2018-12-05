@@ -359,21 +359,38 @@ def get_hidden_state(model, dataloader_test, dataloader_audio_test, params, epoc
         with torch.no_grad():
             img = Variable(img).cuda()
         out, _, _, hidden_enc = model(img, target)
+        # print(np.shape(hidden_enc[0]))
+        # print(np.shape(hidden_enc[1]))
         hidden_enc_arr.append(hidden_enc)
 
     return hidden_enc_arr
 
 
-def load_cnnseq2seq(params, use_best_checkpoint=True):
+def get_h0(model, dataloader_test, dataloader_audio_test, params):
+    h0_arr = []
+    for bs_test, (d, a) in enumerate(zip(dataloader_test.keys(), dataloader_audio_test.keys())):
+        data = dataloader_test[d]
+        audio = dataloader_audio_test[a]
+        img = data
+        target = audio.reshape(-1, np.shape(audio)[-1], params['output_size']).to(params['gpu_num'][0])  # labels.to(device)
+        with torch.no_grad():
+            img = Variable(img).cuda()
+        out, _, _, hidden_enc = model(img, target)
+        h0_arr.append(hidden_enc[0])
+
+    return h0_arr
+
+
+def load_cnnseq2seq(cnn_pretrain, cnn_seq2seq_pretrain, use_best_checkpoint=True):
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.83perf/'
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn2_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/'
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn2_origAudio_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_76.78perf/'
-    cnn_model_path = utils.project_dir_name() + params['cnn_pretrain']
+    cnn_model_path = utils.project_dir_name() + cnn_pretrain
     cnn_params = load_json(cnn_model_path, 'parameters.json')
     # cnnseq2seq_model_path = utils.project_dir_name() + 'cnnseq/cnnseq2seq_HSL_bin_1D_res_stepPred_8_ep_2_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3177_testSize_1137_cost_audio/'
     # cnnseq2seq_model_path = utils.project_dir_name() + 'cnnseq/cnnseq2seq2_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3177_testSize_1137_cost_audio/'
     # cnnseq2seq_model_path = utils.project_dir_name() + 'cnnseq/cnnseq2seq2_origAudio_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3182_testSize_1139_cost_audio/'
-    cnnseq2seq_model_path = utils.project_dir_name() + params['cnn_seq2seq_pretrain']
+    cnnseq2seq_model_path = utils.project_dir_name() + cnn_seq2seq_pretrain
     cnnseq2seq_params = load_json(cnnseq2seq_model_path, 'seq2seq_parameters.json')
 
     saved_model = cnnseq2seq_params['saved_model']

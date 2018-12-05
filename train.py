@@ -367,13 +367,13 @@ if __name__ == '__main__':
         '--npz_filename', help='Filename with npz data for train'
     )
     parser.add_argument(
+        '--npz_filename_test', help='Filename with npz data for test'
+    )
+    parser.add_argument(
         '--cnn_pretrain', help='Filename with pretrained CNN'
     )
     parser.add_argument(
         '--cnn_seq2seq_pretrain', help='Filename with pretrained CNN-Seq2Seq'
-    )
-    parser.add_argument(
-        '--npz_filename_test', help='Filename with npz data for test'
     )
     parser.add_argument(
         '--loss_smoothing', type=float,

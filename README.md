@@ -4,6 +4,42 @@
 
 ![A visual representation of the Scene2Wav architecture]()
 
+## Datasets
+* Obtain data in `npz` format: Download the COGNIMUSE dataset and organize it and pre-process following instructions in [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 
+* Your dataset should be in a subfolder in `datasets/` filled with equal-length wav files.
+
+## Pre-processing
+```
+python audio_preprocessing.py --folder FOLDER_NAME
+```
+
+## Training
+1. Train your visual extraction and Encoder with CNN-Seq2Seq
+    * Pre-train CNN with Scene frames and Emotion scores
+    ```bash
+    python CNN_main.py --mode=train
+    ```
+    * Pre-train CNN-Seq2Seq end-to-end with the Scene frames and Audio
+    ```bash
+    python CNNSeq2Seq_main.py --mode=train
+    ```
+2. To train the full CNNSeq2SampleRNN (Scene2Wav) model you need to run `train.py`. All model hyperparameters are settable in the command line. Most hyperparameters have sensible default values, so you don't need to provide all of them. Run `python train.py -h` for details. To train on the `piano` dataset using the best hyperparameters we've found, run:
+
+```
+CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 3 --dataset piano3
+CUDA_VISIBLE_DEVICES=1 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 --dataset COGNIMUSE_eq_eq_pad
+CUDA_VISIBLE_DEVICES=2 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 3 --q_levels 512 --dataset COGNIMUSE_eq_eq_pad
+
+CUDA_VISIBLE_DEVICES=0,1 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 --dataset splices_audio_BMI_16000_c1_16bits_music_eq
+
+CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST_3SECS_CNNSEQ2SEQ_CORRECTED_ORIG_N3 --frame_sizes 16 4 --n_rnn 3 --dataset data_npz
+CUDA_VISIBLE_DEVICES=1 python train.py --exp TEST_3SECS_CNNSEQ2SEQ_CORRECTED_N3 --frame_sizes 16 4 --n_rnn 3 --dataset data_npz --npz_filename video_feats_HSL_10fps_pad_train.npz --npz_filename_test video_feats_HSL_10fps_pad_test.npz --cnn_pretrain cnnseq/cnn2_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/ --cnn_seq2seq_pretrain cnnseq/cnnseq2seq2_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3177_testSize_1137_cost_audio/
+```
+
+The results - training log, loss plots, model checkpoints and generated samples will be saved in `results/`.
+
+We also have an option to monitor the metrics using [CometML](https://www.comet.ml/). To use it, just pass your API key as `--comet_key` parameter to `train.py`.
+
 
 ## Dependencies
 
@@ -23,39 +59,9 @@ pip install http://download.pytorch.org/whl/cu80/torch-0.4.0-cp36-cp36m-linux_x8
 pip install http://download.pytorch.org/whl/cu80/torch-0.4.0-cp36-cp36mu-linux_x86_64.whl
 
 pip install moviepy requests
+
+pip install pandas seaborn datashader umap plotnine
 ```
-
-## Datasets
-
-We provide a script for creating datasets from YouTube single-video mixes. It downloads a mix, converts it to wav and splits it into equal-length chunks. To run it you need youtube-dl (a recent version; the latest version from pip should be okay) and ffmpeg. To create an example dataset - 4 hours of piano music split into 8 second chunks, run:
-
-```
-cd datasets
-./download-from-youtube.sh "https://www.youtube.com/watch?v=EhO_MrRfftU" 8 piano
-```
-
-You can also prepare a dataset yourself. It should be a directory in `datasets/` filled with equal-length wav files. Or you can create your own dataset format by subclassing `torch.utils.data.Dataset`. It's easy, take a look at `dataset.FolderDataset` in this repo for an example.
-
-## Pre-processing
-```
-python audio_preprocessing.py --folder FOLDER_NAME
-```
-
-## Training
-
-To train the model you need to run `train.py`. All model hyperparameters are settable in the command line. Most hyperparameters have sensible default values, so you don't need to provide all of them. Run `python train.py -h` for details. To train on the `piano` dataset using the best hyperparameters we've found, run:
-
-```
-CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 3 --dataset piano3
-CUDA_VISIBLE_DEVICES=1 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 --dataset COGNIMUSE_eq_eq_pad
-CUDA_VISIBLE_DEVICES=2 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 3 --q_levels 512 --dataset COGNIMUSE_eq_eq_pad
-
-CUDA_VISIBLE_DEVICES=0,1 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 --dataset splices_audio_BMI_16000_c1_16bits_music_eq
-```
-
-The results - training log, loss plots, model checkpoints and generated samples will be saved in `results/`.
-
-We also have an option to monitor the metrics using [CometML](https://www.comet.ml/). To use it, just pass your API key as `--comet_key` parameter to `train.py`.
 
 ## RuntimeError loading state_dict
 * Addition of *module.* at the beginning of parameters' keys makes throws an *unexpected keys* error
