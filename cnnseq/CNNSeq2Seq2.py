@@ -350,20 +350,22 @@ def test_with_model(model, dataloader_label_test, dataloader_test, dataloader_au
 
 
 def get_hidden_state(model, dataloader_test, dataloader_audio_test, params, epoch=0):
-    hidden_enc_arr = []
+    hidden_enc_arr, out_arr = [], []
     for bs_test, (d, a) in enumerate(zip(dataloader_test.keys(), dataloader_audio_test.keys())):
         data = dataloader_test[d]
         audio = dataloader_audio_test[a]
         img = data
         target = audio.reshape(-1, np.shape(audio)[-1], params['output_size']).to(params['gpu_num'][0])  # labels.to(device)
         with torch.no_grad():
-            img = Variable(img).cuda()
+            img = Variable(img).cuda(params['gpu_num'][0])
         out, _, _, hidden_enc = model(img, target)
+        out_numpy = out.cpu().detach().data.numpy()
         # print(np.shape(hidden_enc[0]))
         # print(np.shape(hidden_enc[1]))
         hidden_enc_arr.append(hidden_enc)
+        out_arr.append(out_numpy)
 
-    return hidden_enc_arr
+    return hidden_enc_arr, out_arr
 
 
 def get_h0(model, dataloader_test, dataloader_audio_test, params):
@@ -401,7 +403,7 @@ def load_cnnseq2seq(cnn_pretrain, cnn_seq2seq_pretrain, use_best_checkpoint=True
         saved_model_cnn = cnnseq2seq_params['saved_model_cnn_best']
         # saved_model_cnn = cnn_params['saved_model_best_test']
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    trim_model_name = True
+    trim_model_name = False  # True if num_batches_tracked issue -> means Pytorch version is not 0.4.1
     model = load_model(cnn_params, cnnseq2seq_params, cnnseq2seq_model_path, saved_model, saved_model_cnn,
                        device=device, trim_model_name=trim_model_name)
     ## Load CNN before fine-tuning (error loading fine-tuned)
