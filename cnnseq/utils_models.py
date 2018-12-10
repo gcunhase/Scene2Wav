@@ -18,7 +18,7 @@ def flatten_audio(samples, args):
     return audio
 
 
-def flatten_audio_with_params(samples, seq_length, audio_n_pred):
+def flatten_audio_with_params(samples, seq_length):  # , audio_n_pred):
     audio = np.reshape(samples, [-1, seq_length])
     #audio = np.zeros([1, seq_length])
     #for k, j in enumerate(range(0, seq_length, audio_n_pred)):
