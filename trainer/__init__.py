@@ -94,11 +94,11 @@ class Trainer(object):
                     b = np.expand_dims(b, 0)  # b.unsqueeze(0)
                     a = np.expand_dims(a, 0)  # a.unsqueeze(0)
                     # print("b: {}, a: {}, i: {}".format(np.shape(b), np.shape(a), np.shape(i)))
-                    h = self.model_cnnseq2sample(b, a)
+                    h_proj, _ = self.model_cnnseq2sample(b, a)
                     if e == 0:
-                        batch_hidden = h
+                        batch_hidden = h_proj
                     else:
-                        batch_hidden = torch.cat((batch_hidden, h), 1)  # concat on position 1
+                        batch_hidden = torch.cat((batch_hidden, h_proj), 1)  # concat on position 1
                     # print(np.shape(batch_output))
                 batch_output = self.model(*batch_inputs, hidden=batch_hidden)
                 loss = self.criterion(batch_output, batch_target)

@@ -217,8 +217,13 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
 
     pattern = 'ep{}-s{}-em{}.wav'
     pattern_target_audio = 'ep{}-s{}-em{}_targetAudio.wav'
+    pattern_cnnseq2seq_audio = 'ep{}-s{}-em{}_cnnseq2seqAudio.wav'
     pattern_video = 'ep{}-s{}-em{}.avi'
+    pattern_video_500x500 = 'ep{}-s{}-em{}_500x500.avi'
     pattern_video_target_audio = 'ep{}-s{}-em{}_targetAudio.avi'
+    pattern_video_target_audio_500x500 = 'ep{}-s{}-em{}_targetAudio_500x500.avi'
+    pattern_video_cnnseq2seq_audio = 'ep{}-s{}-em{}_cnnseq2seqAudio.avi'
+    pattern_video_cnnseq2seq_audio_500x500 = 'ep{}-s{}-em{}_cnnseq2seqAudio_500x500.avi'
 
     def __init__(self, samples_path, n_samples, sample_length, sample_rate):
         super().__init__([(1, 'epoch')])
@@ -237,31 +242,40 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
         # samples = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length) \
         #               .cpu().float().numpy()
         # samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length)
-        samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, 100, self.sample_length)
-        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}".
-              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, emotion))
+        samples, input, target_audio, emotion, out_cnnseq2seq = self.generate_cnnseq2sample(test_data_loader, 100, self.sample_length)
+        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}, out_cnnseq2seq {}".
+              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, np.shape(emotion),
+                     np.shape(out_cnnseq2seq)))
 
         # Check desired emotion
-        samples_em, input_em, target_em, emotion_em = [], [], [], []
+        samples_em, input_em, target_em, emotion_em, out_cnnseq2seq_em = [], [], [], [], []
         if desired_emotion is not None:
-            for s, i, t, e in zip(samples, input, target_audio, emotion):
+            for s, i, t, e, o in zip(samples, input, target_audio, emotion, out_cnnseq2seq):
                 if e.data.numpy() == desired_emotion:
                     samples_em.append(s)
                     input_em.append(i)
                     target_em.append(t)
                     emotion_em.append(e)
-            samples, input, target_audio, emotion = np.array(samples_em), np.array(input_em), np.array(target_em), np.array(emotion_em)
-        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}".
-              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, emotion))
+                    out_cnnseq2seq_em.append(o)
+            samples, input, target_audio, emotion, out_cnnseq2seq = np.array(samples_em), np.array(input_em),\
+                                                                    np.array(target_em), np.array(emotion_em),\
+                                                                    np.array(out_cnnseq2seq_em)
+        print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}, out_cnnseq2seq {}".
+              format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, np.shape(emotion),
+                     np.shape(out_cnnseq2seq)))
 
         for i in range(self.n_samples):
+            # Obtained audio (Proposed model)
             filename_sample = os.path.join(self.samples_path,
                                            self.pattern.format(epoch_index, i + 1, emotion[i]))
             # write_wav(filename_sample, samples[i, :], sr=self.sample_rate, norm=True)
             write_wav(filename_sample, samples[i], sr=self.sample_rate, norm=True)
-
+            # Target audio
             filename_target_audio = os.path.join(self.samples_path, self.pattern_target_audio.format(epoch_index, i + 1, emotion[i]))
             write_wav(filename_target_audio, target_audio[i], sr=self.sample_rate, norm=True)
+            # CNN-Seq2Seq audio (Baseline model)
+            filename_cnnseq2seq_audio = os.path.join(self.samples_path, self.pattern_cnnseq2seq_audio.format(epoch_index, i + 1, emotion[i]))
+            write_wav(filename_cnnseq2seq_audio, out_cnnseq2seq[i], sr=self.sample_rate, norm=True)
 
             # Save input as video with audio as samples
             print(np.shape(np.array(input[i]).squeeze()))
@@ -281,11 +295,23 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
             # clip.set_audio(AudioArrayClip(audio_sample, fps=16000))
             filename = os.path.join(self.samples_path, self.pattern_video.format(epoch_index, i + 1, emotion[i]))
             clip.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_sample)  # export as video
+            clip_resized = clip.resize(newsize=(500, 500))
+            filename = os.path.join(self.samples_path, self.pattern_video_500x500.format(epoch_index, i + 1, emotion[i]))
+            clip_resized.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_sample)  # export as video
 
             # audio_sample = np.expand_dims(target_audio[i], 0)  # target_audio[i, :]
             # clip.set_audio(AudioArrayClip(audio_sample, fps=16000))
             filename = os.path.join(self.samples_path, self.pattern_video_target_audio.format(epoch_index, i + 1, emotion[i]))
             clip.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_target_audio)  # export as video
+            clip_resized = clip.resize(newsize=(500, 500))
+            filename = os.path.join(self.samples_path, self.pattern_video_target_audio_500x500.format(epoch_index, i + 1, emotion[i]))
+            clip_resized.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_target_audio)  # export as video
+
+            filename = os.path.join(self.samples_path, self.pattern_video_cnnseq2seq_audio.format(epoch_index, i + 1, emotion[i]))
+            clip.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_cnnseq2seq_audio)  # export as video
+            clip_resized = clip.resize(newsize=(500, 500))
+            filename = os.path.join(self.samples_path, self.pattern_video_cnnseq2seq_audio_500x500.format(epoch_index, i + 1, emotion[i]))
+            clip_resized.write_videofile(filename, fps=10, codec='png', audio_fps=self.sample_rate, audio=filename_cnnseq2seq_audio)  # export as video
 
 
 class StatsPlugin(Plugin):

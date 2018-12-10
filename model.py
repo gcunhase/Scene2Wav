@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torch.nn import init, Linear
 
 import numpy as np
-from cnnseq.utils_models import load_json
+from cnnseq.utils_models import flatten_audio_with_params
 from cnnseq.CNNSeq2Seq2 import load_cnnseq2seq, get_hidden_state
 from cnnseq.CNNSeq2Seq2_main import feats_tensor_input, feats_tensor_audio
 
@@ -36,7 +36,7 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         # print("batch_hsl: {}, batch_audio: {}".format(np.shape(x), np.shape(y)))
         batch_hsl_tensor = feats_tensor_input(x, data_type='HSL')
         batch_audio_tensor = feats_tensor_audio(y)
-        hidden_enc_arr = get_hidden_state(self.cnnseq2seq_model, batch_hsl_tensor, batch_audio_tensor, self.cnnseq2seq_params)
+        hidden_enc_arr, out_arr = get_hidden_state(self.cnnseq2seq_model, batch_hsl_tensor, batch_audio_tensor, self.cnnseq2seq_params)
         hidden_from_CNNSeq = hidden_enc_arr[0]
         hidden_from_CNNSeq = hidden_from_CNNSeq
         # Considers n_rnn = 2 (self.num_layers in CNNSeq2Seq)
@@ -56,7 +56,7 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_1_proj)
         # hidden_from_CNNSeq_tensor = torch.cat([torch.LongTensor(hidden_from_CNNSeq_0_proj), hidden_from_CNNSeq_1_proj])
         # hidden_cnn = torch.LongTensor(self.model.n_rnn, self.model.batch_size, self.model.dim).fill_(0)
-        return hidden_from_CNNSeq_0_proj
+        return hidden_from_CNNSeq_0_proj, out_arr
 
     @property
     def lookback(self):
@@ -412,23 +412,33 @@ class GeneratorCNNSeq2Sample:
             break
 
         # CNN-Seq2Sample here
-        input, target_audio, emotion = [], [], []
+        input, target_audio, emotion, out_cnnseq2seq_arr = [], [], [], []
         for e, (b, a, em) in enumerate(zip(batch_hsl, batch_audio, batch_emotion)):
             if e >= n_seqs:
                 break
             b = np.expand_dims(b, 0)  # b.unsqueeze(0)
             a = np.expand_dims(a, 0)  # a.unsqueeze(0)
             #  print("b: {}, a: {}, i: {}".format(np.shape(b), np.shape(a), np.shape(i)))
-            h = self.model_cnnseq2sample(b, a)
+            # Return projection of h for using with SampleRNN and original h for using with vanilla RNN decoder
+            h_proj, out_cnnseq2seq = self.model_cnnseq2sample(b, a)
             if e == 0:
-                batch_hidden = h
+                batch_hidden = h_proj
             else:
-                batch_hidden = torch.cat((batch_hidden, h), 1)  # concat on position 1
+                batch_hidden = torch.cat((batch_hidden, h_proj), 1)  # concat on position 1
                 #  print(np.shape(batch_output))
             # batch_output = model(*batch_inputs, hidden=batch_hidden)
             input.append(b)
-            target_audio.append(np.array(np.reshape(a, [-1, seq_len])).squeeze())
+            # a_flatten = flatten_audio_with_params(a, seq_len)
+            a_flatten = np.array(np.reshape(a, [-1, seq_len])).squeeze()
+            target_audio.append(a_flatten)
             emotion.append(em)
+            # out_flatten = flatten_audio_with_params(out_cnnseq2seq, seq_len)
+            out_flatten = np.array(np.reshape(out_cnnseq2seq, [-1, seq_len])).squeeze()
+            out_cnnseq2seq_arr.append(out_flatten)
             # TODO: self.generator should be in the for loop
+        print(np.shape(out_cnnseq2seq_arr))
+        print(np.shape(out_cnnseq2seq_arr))
+        print(np.shape(input))
+        # Generator is SampleRNN conditioned on new hidden states (see Generator class)
         samples = self.generator(n_seqs, seq_len, hidden=batch_hidden).cpu().float().numpy()
-        return samples, input, target_audio, emotion
+        return samples, input, target_audio, emotion, out_cnnseq2seq_arr

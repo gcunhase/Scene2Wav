@@ -18,13 +18,12 @@ from cnnseq.utils import normalize
 
 # Paths
 # Audio ORIG
-RESULTS_PATH = 'results/exp:TEST_END2END_FIXED_AUDIO_RESHAPE_ORIG-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
-PRETRAINED_CKP = 'best-ep26-it29328'  # Audio orig
-# PRETRAINED_CKP = 'best-ep6-it6768'  # Audio orig
+#RESULTS_PATH = 'results/exp:TEST_END2END_FIXED_AUDIO_RESHAPE_ORIG-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
+#PRETRAINED_CKP = 'best-ep26-it29328'  # Audio orig
 
 # Audio INST
-#RESULTS_PATH = 'results/exp:TEST2_END2END_FIXED_AUDIO_RESHAPE-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
-#PRETRAINED_CKP = 'best-ep19-it21432'  # Audio
+RESULTS_PATH = 'results/exp:TEST2_END2END_FIXED_AUDIO_RESHAPE-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
+PRETRAINED_CKP = 'best-ep19-it21432'  # Audio
 
 PRETRAINED_DIR = RESULTS_PATH + 'checkpoints/'
 PRETRAINED_PATH = PRETRAINED_DIR + PRETRAINED_CKP
@@ -89,6 +88,8 @@ model = SampleRNN(
     weight_norm=params['weight_norm'],
     batch_size=params['batch_size']
 )
+print(params['cnn_pretrain'])
+print(params['cnn_seq2seq_pretrain'])
 model_cnnseq2sample = CNNSeq2SampleRNN(params).cuda()
 
 # Delete "model." from key names since loading the checkpoint automatically attaches it to the key names
