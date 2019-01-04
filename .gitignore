@@ -3,6 +3,7 @@
 datasets/*
 librosa/*
 cnnseq/*res*/*
+samples*/*
 results/*
 data_analysis/results*
 
