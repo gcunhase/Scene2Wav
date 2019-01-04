@@ -3,8 +3,9 @@ import os
 import numpy as np
 from cnnseq.utils_models import CLASS, CLASS2D
 from sklearn.preprocessing.data import QuantileTransformer, MinMaxScaler
-import pickle
 from collections import OrderedDict
+import pickle
+import json
 
 
 def fix_unexpected_keys_error(pretrained_state):
@@ -186,3 +187,20 @@ def save_feats_pickle(hidden_dict, output_dict, label_dict, save_feats_pickle):
     # Save hidden state in pickle for t-SNE plotting
     with open(save_feats_pickle, 'wb') as f:
         pickle.dump({"feat": hidden_dict, "label": label_dict, "gen_label": output_dict}, f)
+
+
+def load_json(results_dir, saved_model_parameters):
+    # Load model parameters from JSON file, not really needed here
+    json_path = os.path.join(results_dir, saved_model_parameters)
+    with open(json_path, 'r') as fp:
+        # print("JSON file: " + json_path)
+        params = json.load(fp)
+    return params
+
+
+def save_json(args):
+    # Save args in json file so model can be fully loaded independently
+    json_path = os.path.join(args.results_dir, args.saved_model_parameters)
+    with open(json_path, 'w') as fp:
+        print("Saving model parameters in " + json_path)
+        json.dump(vars(args), fp, sort_keys=True, indent=4)

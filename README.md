@@ -97,4 +97,4 @@ if isinstance(sequence, list) or isinstance(sequence, np.ndarray)
         * TODO: LSTM units
 
 ## Credits
-* In case you wish to use this code, please credit this repository or send me an email with any requests or questions.  1   
+* In case you wish to use this code, please credit this repository or send me an email with any requests or questions.  
