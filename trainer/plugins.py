@@ -80,7 +80,7 @@ class ValidationPlugin(Plugin):
             for e, (b, a) in enumerate(zip(batch_hsl, batch_audio)):
                 b = np.expand_dims(b, 0)
                 a = np.expand_dims(a, 0)
-                h = self.trainer.model_cnnseq2sample(b, a)
+                h, _ = self.trainer.model_cnnseq2sample(b, a)
                 if e == 0:
                     batch_hidden = h
                 else:
@@ -218,6 +218,7 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
     pattern = 'ep{}-s{}-em{}.wav'
     pattern_target_audio = 'ep{}-s{}-em{}_targetAudio.wav'
     pattern_cnnseq2seq_audio = 'ep{}-s{}-em{}_cnnseq2seqAudio.wav'
+    pattern_cnnseq2seq_audio_scaled = 'ep{}-s{}-em{}_cnnseq2seqAudio_scaled.wav'
     pattern_video = 'ep{}-s{}-em{}.avi'
     pattern_video_500x500 = 'ep{}-s{}-em{}_500x500.avi'
     pattern_video_target_audio = 'ep{}-s{}-em{}_targetAudio.avi'
@@ -242,7 +243,7 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
         # samples = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length) \
         #               .cpu().float().numpy()
         # samples, input, target_audio, emotion = self.generate_cnnseq2sample(test_data_loader, self.n_samples, self.sample_length)
-        samples, input, target_audio, emotion, out_cnnseq2seq = self.generate_cnnseq2sample(test_data_loader, 100, self.sample_length)
+        samples, input, target_audio, emotion, out_cnnseq2seq = self.generate_cnnseq2sample(test_data_loader, 128, self.sample_length)
         print("Shape: samples {}, input {}, target_audio {}, sr {}, emotion {}, out_cnnseq2seq {}".
               format(np.shape(samples), np.shape(input), np.shape(target_audio), self.sample_rate, np.shape(emotion),
                      np.shape(out_cnnseq2seq)))
@@ -274,8 +275,14 @@ class GeneratorCNNSeq2SamplePlugin(Plugin):
             filename_target_audio = os.path.join(self.samples_path, self.pattern_target_audio.format(epoch_index, i + 1, emotion[i]))
             write_wav(filename_target_audio, target_audio[i], sr=self.sample_rate, norm=True)
             # CNN-Seq2Seq audio (Baseline model)
+            #scaled = -1.0 + (1.0 - (-1.0)) * (out_cnnseq2seq[i] - np.amin(out_cnnseq2seq[i])) / (
+            #        np.amax(out_cnnseq2seq[i]) - np.amin(out_cnnseq2seq[i]))
             filename_cnnseq2seq_audio = os.path.join(self.samples_path, self.pattern_cnnseq2seq_audio.format(epoch_index, i + 1, emotion[i]))
             write_wav(filename_cnnseq2seq_audio, out_cnnseq2seq[i], sr=self.sample_rate, norm=True)
+            #out_reshaped_scaled = -1.0 + (1.0 - (-1.0)) * (out_cnnseq2seq[i] - np.amin(out_cnnseq2seq[i])) / (
+            #        np.amax(out_cnnseq2seq[i]) - np.amin(out_cnnseq2seq[i]))
+            #filename_cnnseq2seq_audio_scaled = os.path.join(self.samples_path, self.pattern_cnnseq2seq_audio_scaled.format(epoch_index, i + 1, emotion[i]))
+            #write_wav(filename_cnnseq2seq_audio_scaled, out_reshaped_scaled.T, sr=self.sample_rate, norm=True)
 
             # Save input as video with audio as samples
             print(np.shape(np.array(input[i]).squeeze()))
