@@ -22,12 +22,25 @@ class Seq2Seq(nn.Module):
         self.device = device
         self.hidden_size = self.params['hidden_size']
         self.num_layers = self.params['num_layers']
-        self.lstm_enc = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+
         if self.model_type == 'seq2seq':
+            self.lstm_enc = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
             self.lstm_dec = nn.LSTM(output_size, hidden_size, num_layers, batch_first=True)
             self.decoder_linear = nn.Linear(hidden_size, output_size)
+        elif self.model_type == 'seq2seq_gru':
+            self.lstm_enc = nn.GRU(input_size, hidden_size, num_layers=num_layers, batch_first=True)
+            self.lstm_dec = nn.GRU(output_size, hidden_size, num_layers=num_layers, batch_first=True)
+            self.decoder_linear = nn.Linear(hidden_size, output_size)
         else:
+            self.lstm_enc = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
             self.decoder_linear = nn.Linear(hidden_size, input_size)
+
+        #self.lstm_enc = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        #if self.model_type == 'seq2seq':
+        #    self.lstm_dec = nn.LSTM(output_size, hidden_size, num_layers, batch_first=True)
+        #    self.decoder_linear = nn.Linear(hidden_size, output_size)
+        #else:
+        #    self.decoder_linear = nn.Linear(hidden_size, input_size)
 
         # self.softmax = nn.LogSoftmax(dim=1)
         if activation_function == 'softmax':
@@ -49,11 +62,14 @@ class Seq2Seq(nn.Module):
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(self.device)
 
         # Encoder: Forward propagate LSTM
-        out, hidden = self.lstm_enc(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
-        # print("Enc shapes: out {}, hidden: {}, h0: {}, c0: {}".format(np.shape(out), np.shape(hidden), np.shape(h0), np.shape(c0)))
+        if self.model_type == 'seq2seq' or self.model_type == 'lstm':
+            out, hidden = self.lstm_enc(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
+            # print("Enc shapes: out {}, hidden: {}, h0: {}, c0: {}".format(np.shape(out), np.shape(hidden), np.shape(h0), np.shape(c0)))
+        else:  # seq2seq_gru
+            out, hidden = self.lstm_enc(x, h0)
 
         # Decoder: Decode the hidden state of the last time step
-        if self.model_type == 'seq2seq':
+        if 'seq2seq' in self.model_type:
             out, _ = self.lstm_dec(y, hidden)
             # print("Decoder: {}".format(np.shape(out)))
         out = self.softmax(self.decoder_linear(out))

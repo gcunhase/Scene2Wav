@@ -2,10 +2,10 @@
 !download-from-youtube.sh
 datasets/*
 librosa/*
-cnnseq/*res*/*
 samples*/*
 results/*
 data_analysis/results*
+cnnseq/*res*/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
