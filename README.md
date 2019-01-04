@@ -3,7 +3,7 @@
 * Model has 3 stages: visual feature extraction with CNN, visual feature encoding with Deep RNN Encoder and music generation with Scene2Wav decoder (conditional SampleRNN Decoder).
 
 ## Datasets and Pre-Processing
-* Download `data.npz` or make it from scratch:
+* [Download `data.npz`](https://data.mendeley.com/datasets/dsynj2sxnc/draft?a=35a88183-11cd-4a13-87ee-c9cabf9e7f86) or make it from scratch:
     1. Download the [COGNIMUSE dataset](http://cognimuse.cs.ntua.gr/database)
     2. Organize it and pre-process following instructions in [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 
 * The `.npz` dataset should be copied in a subfolder in a `datasets/` folder in the root of the repository
