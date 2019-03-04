@@ -2,7 +2,7 @@
 * A PyTorch implementation of *Scene2Wav: A Deep Convolutional Sequence-to-SampleRNN for Emotional Scene Musicalization*
 * Model has 3 stages: visual feature extraction with CNN, visual feature encoding with Deep RNN Encoder and music generation with Scene2Wav decoder (conditional SampleRNN Decoder).
 <p align="center">
-<img src="https://github.com/gcunhase/Scene2Wav/blob/master/data_analysis/proposed_model.png" width="100" alt="Scene2Wav">
+<img src="https://github.com/gcunhase/Scene2Wav/blob/master/data_analysis/proposed_model.png" width="150" alt="Scene2Wav">
 </p>
 
 ## Requirements
