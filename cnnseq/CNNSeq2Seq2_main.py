@@ -30,7 +30,7 @@ def get_parser():
     parser.add_argument('--batch_size', type=int, default=30)
     parser.add_argument('--gpu_num', type=list, default=[0, 1])
     # parser.add_argument('--optimizer_name', type=str, default='asgd',
-    parser.add_argument('--optimizer_name', type=str, default='adam',
+    parser.add_argument('--optimizer_name', type=str, default='asgd',
                         help='Optimizer: [adam, sgd, asgd, adagrad, adadelta, rmsprop, rprop]')
     parser.add_argument('--learning_rate', type=float, default=0.001)  # 1e-3)
     parser.add_argument('--momentum', type=float, default=0.98)
@@ -44,7 +44,7 @@ def get_parser():
                              'both: audio and emotion (considers two cost functions)')
 
     # Seq2Seq hyper-parameters
-    parser.add_argument('--sequence_length', type=int, default=160000, help='3 seconds at 16 kHz')
+    parser.add_argument('--sequence_length', type=int, default=48000, help='3 seconds at 16 kHz is 48000, 10secs is 160000')
     parser.add_argument('--audio_n_prediction', type=int, default=8, help='Step prediction')
     parser.add_argument('--input_size', type=int, default=30, help='90 frames of video in 3 seconds of audio, 30 if at 10fps')
     parser.add_argument('--output_size', type=int, default=8, help='Same as audio_n_prediction')
@@ -67,7 +67,9 @@ def get_parser():
                         help='Data directory')
     # parser.add_argument('--data_filename', type=str, default='video_feats_HSLhist_data', help='Data file')
     # parser.add_argument('--data_filename', type=str, default='video_feats_HSLboth_10fps_data_divPerVideo', help='Data file')
-    parser.add_argument('--data_filename', type=str, default='video_feats_HSL_10fps_10secs_intAudio_pad', help='Data file')
+    # parser.add_argument('--data_filename', type=str, default='video_feats_HSL_10fps_10secs_intAudio_pad', help='Data file')
+    parser.add_argument('--data_filename', type=str, default='video_feats_HSL_10fps_3secs_intAudio_pad',
+                        help='Data file')
 
     # Pre-trained CNN/CNFN
     parser.add_argument('--cnn_model_path', type=str,
@@ -79,11 +81,12 @@ def get_parser():
                         # default='./results_cnn2_10secs/res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam/',
                         # default='./results_cnn2/res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/',
                         # default='./results_cnn3/res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam/',
-                        default='./results_cnn4/res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam/',
+                        # default='./results_cnn4/res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam/',
+                        default='./results/cnn2_3secs_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/',
                         help='Directory containing CNNs saved model and parameters')
 
     # Results
-    parser.add_argument('--results_dir', type=str, default='./results_cnn_seq2seq4_gru/', help='Directory to save results')
+    parser.add_argument('--results_dir', type=str, default='./results_cnn_seq2seq2_gru_stepLossPlot/', help='Directory to save results')
     # parser.add_argument('--results_dir', type=str, default='./results_cnn_seq2seq3/HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3182_testSize_1139_cost_audio/', help='Directory to save results')
     # parser.add_argument('--results_dir', type=str, default='./results_cloud_server_test/cnnseq2seq2_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3177_testSize_1137_cost_audio/', help='Directory to save results')
     # parser.add_argument('--results_dir', type=str, default='./results_cnn_seq2seq/histFlatten_num_1D_res_stepPred_8_ep_10_bs_90_relu_layers_2_size_128_lr_0.01_we_1e-05_asgd_trainSize_3883_testSize_431_cost_both/', help='Directory to save results')

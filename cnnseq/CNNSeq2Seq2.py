@@ -79,6 +79,9 @@ def train(model, params, dataloader_label_train, dataloader_train, dataloader_au
     loss_arr = []
     epoch_arr = []
     max_num_epochs = params['num_epochs']
+    step_loss_arr = []
+    step_arr = []
+    step = 1
     for epoch in range(max_num_epochs):
         for d, l, a in zip(dataloader_train.keys(), dataloader_label_train.keys(), dataloader_audio_train.keys()):
             label = dataloader_label_train[l]
@@ -114,6 +117,10 @@ def train(model, params, dataloader_label_train, dataloader_train, dataloader_au
             loss.backward()
             # scheduler.step(loss)  # Test use of scheduler to change lr after it plateaus
             optimizer.step()
+
+            step_loss_arr.append(loss.item())
+            step_arr.append(step)
+            step += 1
 
         scheduler.step(loss)
         loss_arr.append(loss.item())
@@ -174,6 +181,16 @@ def train(model, params, dataloader_label_train, dataloader_train, dataloader_au
     plt.savefig("{}training_loss.svg".format(res_dir))
     plt.cla()
 
+    # Save training step loss
+    plt.figure(figsize=[6, 6])
+    plt.plot(step_arr, step_loss_arr, '*-')
+    plt.title('Training step loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.grid('on')
+    plt.savefig("{}training_step_loss.svg".format(res_dir))
+    plt.cla()
+
     # Get weights
     # print("\nModel keys: {}".format(model.state_dict().keys()))
     return lab, img, res_dir
@@ -214,11 +231,9 @@ def test_with_model(model, dataloader_label_test, dataloader_test, dataloader_au
         input_reshaped = np.reshape(input_data_tmp, [-1, np.shape(input_data_tmp)[2], np.shape(input_data_tmp)[3],
                                     np.shape(input_data_tmp)[1]])
 
-        target_reshaped = flatten_audio_with_params(target_data_tmp, params['sequence_length'],
-                                                    params['audio_n_prediction'])
+        target_reshaped = flatten_audio_with_params(target_data_tmp, params['sequence_length']) #params['audio_n_prediction'])
 
-        out_reshaped = flatten_audio_with_params(outputs_data_tmp, params['sequence_length'],
-                                                 params['audio_n_prediction'])
+        out_reshaped = flatten_audio_with_params(outputs_data_tmp, params['sequence_length']) #params['audio_n_prediction'])
 
         #print("input_reshaped: {}, out_reshaped: {}, target_reshaped: {}".
         #      format(np.shape(input_reshaped), np.shape(out_reshaped), np.shape(target_reshaped)))
@@ -472,8 +487,7 @@ def generate_with_model(model, dataloader_test, params, epoch=0, verbose=True):
 
         input_reshaped = np.reshape(input_data_tmp, [-1, np.shape(input_data_tmp)[2], np.shape(input_data_tmp)[3],
                                     np.shape(input_data_tmp)[1]])
-        out_reshaped = flatten_audio_with_params(outputs_data_tmp, params['sequence_length'],
-                                                 params['audio_n_prediction'])
+        out_reshaped = flatten_audio_with_params(outputs_data_tmp, params['sequence_length']) # params['audio_n_prediction'])
 
         if verbose:
             print("input_data_tmp: {}, outputs_data_tmp: {}".format(np.shape(input_data_tmp), np.shape(outputs_data_tmp)))
