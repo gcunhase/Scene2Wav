@@ -6,13 +6,16 @@
 </p>
 
 ## Requirements
-This code requires Python 3.5+ and PyTorch 0.1.12+.
-You can install the rest of the dependencies by running `pip install -r requirements.txt`.
+This code was tested with Python 3.5+ and PyTorch 0.1.12+.
+
+The rest of the dependencies can be installed with `pip install -r requirements.txt`.
 
 ## Dataset and Pre-Processing
-* [Download `data.npz`](https://data.mendeley.com/datasets/dsynj2sxnc/draft?a=35a88183-11cd-4a13-87ee-c9cabf9e7f86) or make it from scratch:
-    1. Download the [COGNIMUSE dataset](http://cognimuse.cs.ntua.gr/database)
-    2. Organize it and pre-process following instructions in [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 
+* Data:
+    * [Download pre-processed `data.npz`](https://data.mendeley.com/datasets/dsynj2sxnc/draft?a=35a88183-11cd-4a13-87ee-c9cabf9e7f86)
+    * OR Make it from scratch:
+        1. Download the [COGNIMUSE dataset](http://cognimuse.cs.ntua.gr/database)
+        2. Organize it and pre-process following instructions in [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 
 * The `.npz` dataset should be copied in a subfolder in a `datasets/` folder in the root of the repository
     
         .Scene2Wav
@@ -20,6 +23,7 @@ You can install the rest of the dependencies by running `pip install -r requirem
         |   +-- data_npz
         |       +-- my_data_train.npz
         |       +-- my_data_test.npz
+    > Your custom dataset can go in here
 
 
 ## Training
@@ -28,7 +32,7 @@ You can install the rest of the dependencies by running `pip install -r requirem
 CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 --dataset data_npz --npz_filename video_feats_HSL_10fps_3secs_intAudio_pad_train.npz --npz_filename_test video_feats_HSL_10fps_3secs_pad_test.npz --cnn_pretrain cnnseq/cnn4_3secs_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_asgd/ --cnn_seq2seq_pretrain cnnseq/cnnseq2seq4_3secs_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_adam_asgdCNN_trainSize_3182_testSize_1139_cost_audio/
 ```
 
-* If you need to train encoder Scene2Wav with customized dataset (instead of using pre-trained one):
+* If you need to train encoder Scene2Wav with custom dataset (instead of using pre-trained one):
     * Pre-train CNN with Scene frames and Emotion scores
     ```bash
     python CNN_main.py --mode=train
