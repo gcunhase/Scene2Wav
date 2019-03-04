@@ -1,8 +1,15 @@
 # Scene2Wav
-* A PyTorch implementation of *Scene2Wav: A Deep Neural Network for Emotional Scene Musicalization*
+* A PyTorch implementation of *Scene2Wav: A Deep Convolutional Sequence-to-SampleRNN for Emotional Scene Musicalization*
 * Model has 3 stages: visual feature extraction with CNN, visual feature encoding with Deep RNN Encoder and music generation with Scene2Wav decoder (conditional SampleRNN Decoder).
+<p align="center">
+<img src="https://github.com/gcunhase/Scene2Wav/blob/master/data_analysis/proposed_model.png" width="200" alt="Scene2Wav">
+</p>
 
-## Datasets and Pre-Processing
+## Requirements
+This code requires Python 3.5+ and PyTorch 0.1.12+.
+You can install the rest of the dependencies by running `pip install -r requirements.txt`.
+
+## Dataset and Pre-Processing
 * [Download `data.npz`](https://data.mendeley.com/datasets/dsynj2sxnc/draft?a=35a88183-11cd-4a13-87ee-c9cabf9e7f86) or make it from scratch:
     1. Download the [COGNIMUSE dataset](http://cognimuse.cs.ntua.gr/database)
     2. Organize it and pre-process following instructions in [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 
@@ -36,7 +43,7 @@ CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 -
 
 * You can check some generated samples from [this link](https://tinyurl.com/y8rkkw4z).
 
-* Emotion Evaluation
+* Emotion evaluation
     1. Install requirements + Melodia plugin
     ```bash
     pip install music21 vamp librosa midiutil
@@ -46,11 +53,6 @@ CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 -
     python emotion_evaluation.py --data_dir [data dirname] --inflie [filename].wav --outfile [filename].mid
     ```
     
-## Dependencies
-
-This code requires Python 3.5+ and PyTorch 0.1.12+ (try last three options below). Installation instructions for PyTorch are available on their [website](http://pytorch.org/).
-You can install the rest of the dependencies by running `pip install -r requirements.txt`.
-
 ## References
 * [COGNIMUSE dataset](http://cognimuse.cs.ntua.gr/database)
 * [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) 

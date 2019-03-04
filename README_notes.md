@@ -17,7 +17,10 @@ CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST_3SECS_CNNSEQ2SEQ_CORRECTED_ORI
 CUDA_VISIBLE_DEVICES=1 python train.py --exp TEST_3SECS_CNNSEQ2SEQ_CORRECTED_N3 --frame_sizes 16 4 --n_rnn 3 --dataset data_npz --npz_filename video_feats_HSL_10fps_pad_train.npz --npz_filename_test video_feats_HSL_10fps_pad_test.npz --cnn_pretrain cnnseq/cnn2_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/ --cnn_seq2seq_pretrain cnnseq/cnnseq2seq2_HSL_bin_1D_res_stepPred_8_ep_20_bs_30_relu_layers_2_size_128_lr_0.001_we_1e-05_asgd_trainSize_3177_testSize_1137_cost_audio/
 ```
 
-## More detailed dependencies
+## More detailed requirements
+This code requires Python 3.5+ and PyTorch 0.1.12+ (try last three options below). Installation instructions for PyTorch are available on their [website](http://pytorch.org/).
+You can install the rest of the dependencies by running `pip install -r requirements.txt`.
+
 ```bash
 apt-get install ffmpeg
 pip install --upgrade pip
