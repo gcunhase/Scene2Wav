@@ -43,9 +43,9 @@ CUDA_VISIBLE_DEVICES=0 python train.py --exp TEST --frame_sizes 16 4 --n_rnn 2 -
     ```
     
 ## Results
-* The results (training log, loss plots, model checkpoints and generated samples) will be saved in `results/`.
+* Results saved in `results/`: *training log*, *loss plots*, *model checkpoints* and *generated samples*.
 
-* You can check some generated samples from [this link](https://tinyurl.com/y8rkkw4z).
+* You can check some generated samples from [this link](https://tinyurl.com/y8rkkw4z) (tested with VLC Media Player).
 
 * Emotion evaluation
     1. Install requirements + Melodia plugin
