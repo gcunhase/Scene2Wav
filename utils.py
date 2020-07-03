@@ -22,4 +22,4 @@ def q_zero(q_levels):
 def ensure_dir(file_path):
     # directory = os.path.dirname(file_path)
     if not os.path.exists(file_path):
-        os.mkdir(file_path)
+        os.makedirs(file_path)
