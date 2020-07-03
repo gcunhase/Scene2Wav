@@ -12,11 +12,14 @@ from cnnseq.CNNSeq2Seq2_main import feats_tensor_input, feats_tensor_audio
 
 
 class CNNSeq2SampleRNN(torch.nn.Module):
-    def __init__(self, params):
+    def __init__(self, params, trim_model_name=False):
         super(CNNSeq2SampleRNN, self).__init__()
 
         # Load pre-trained CNN-Seq2Seq
-        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq(params['cnn_pretrain'], params['cnn_seq2seq_pretrain'])
+        self.params = params
+        self.cnnseq2seq_model, self.cnnseq2seq_params = load_cnnseq2seq(params['cnn_pretrain'],
+                                                                        params['cnn_seq2seq_pretrain'],
+                                                                        trim_model_name=trim_model_name)
         self.hidden_size = self.cnnseq2seq_params['hidden_size']  # 128
         self.num_layers = self.cnnseq2seq_params['num_layers']
 
@@ -37,23 +40,29 @@ class CNNSeq2SampleRNN(torch.nn.Module):
         batch_hsl_tensor = feats_tensor_input(x, data_type='HSL')
         batch_audio_tensor = feats_tensor_audio(y)
         hidden_enc_arr, out_arr = get_hidden_state(self.cnnseq2seq_model, batch_hsl_tensor, batch_audio_tensor, self.cnnseq2seq_params)
-        hidden_from_CNNSeq = hidden_enc_arr[0]
-        hidden_from_CNNSeq = hidden_from_CNNSeq
-        # Considers n_rnn = 2 (self.num_layers in CNNSeq2Seq)
-        # hidden_from_CNNSeq_proj = self.fc(hidden_from_CNNSeq)
-        hidden_from_CNNSeq_0_proj_cpu = hidden_from_CNNSeq[0]  # torch.tensor().device(torch.device('cpu'))
-        hidden_0_flatten = hidden_from_CNNSeq_0_proj_cpu.view(-1)
-        hidden_from_CNNSeq_0_proj = self.fc(hidden_0_flatten)
-        hidden_from_CNNSeq_0_proj = hidden_from_CNNSeq_0_proj.view(self.num_layers, 1, 1024)
-        hidden_from_CNNSeq_1_proj_cpu = hidden_from_CNNSeq[1]  # torch.tensor().device(torch.device('cpu'))
-        hidden_1_flatten = hidden_from_CNNSeq_1_proj_cpu.view(-1)
-        hidden_from_CNNSeq_1_proj = self.fc(hidden_1_flatten)
-        hidden_from_CNNSeq_1_proj = hidden_from_CNNSeq_1_proj.view(self.num_layers, 1, 1024)
-        # hidden_from_CNNSeq_1_proj = self.fc(torch.FloatTensor(hidden_from_CNNSeq[1]).detach().cpu())
-        # hidden_from_CNNSeq_1_proj = hidden_from_CNNSeq_1_proj.view(1, 1024)
-        hidden_from_CNNSeq_tensor = []
-        hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_0_proj)
-        hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_1_proj)
+        if self.params['seq2seq_model_type'] == 'seq2seq_gru':
+            hidden_from_CNNSeq = hidden_enc_arr[0]
+            # Considers n_rnn = 2 (self.num_layers in CNNSeq2Seq)
+            hidden_from_CNNSeq_proj = self.fc(hidden_from_CNNSeq.view(-1))
+            hidden_from_CNNSeq_0_proj = hidden_from_CNNSeq_proj.view(self.num_layers, 1, 1024)
+        else:  # 'seq2seq' (lstm)
+            hidden_from_CNNSeq = hidden_enc_arr[0]
+            hidden_from_CNNSeq = hidden_from_CNNSeq
+            # Considers n_rnn = 2 (self.num_layers in CNNSeq2Seq)
+            # hidden_from_CNNSeq_proj = self.fc(hidden_from_CNNSeq)
+            hidden_from_CNNSeq_0_proj_cpu = hidden_from_CNNSeq[0]  # torch.tensor().device(torch.device('cpu'))
+            hidden_0_flatten = hidden_from_CNNSeq_0_proj_cpu.view(-1)
+            hidden_from_CNNSeq_0_proj = self.fc(hidden_0_flatten)
+            hidden_from_CNNSeq_0_proj = hidden_from_CNNSeq_0_proj.view(self.num_layers, 1, 1024)
+            hidden_from_CNNSeq_1_proj_cpu = hidden_from_CNNSeq[1]  # torch.tensor().device(torch.device('cpu'))
+            hidden_1_flatten = hidden_from_CNNSeq_1_proj_cpu.view(-1)
+            hidden_from_CNNSeq_1_proj = self.fc(hidden_1_flatten)
+            hidden_from_CNNSeq_1_proj = hidden_from_CNNSeq_1_proj.view(self.num_layers, 1, 1024)
+            # hidden_from_CNNSeq_1_proj = self.fc(torch.FloatTensor(hidden_from_CNNSeq[1]).detach().cpu())
+            # hidden_from_CNNSeq_1_proj = hidden_from_CNNSeq_1_proj.view(1, 1024)
+            hidden_from_CNNSeq_tensor = []
+            hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_0_proj)
+            hidden_from_CNNSeq_tensor.append(hidden_from_CNNSeq_1_proj)
         # hidden_from_CNNSeq_tensor = torch.cat([torch.LongTensor(hidden_from_CNNSeq_0_proj), hidden_from_CNNSeq_1_proj])
         # hidden_cnn = torch.LongTensor(self.model.n_rnn, self.model.batch_size, self.model.dim).fill_(0)
         return hidden_from_CNNSeq_0_proj, out_arr
