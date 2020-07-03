@@ -1,5 +1,5 @@
 import os
-from music21 import converter, corpus, instrument, midi, note, chord, pitch
+from music21 import converter, corpus, instrument, midi, note, chord, pitch, environment
 import librosa
 import vamp
 import argparse
@@ -10,15 +10,44 @@ import numpy as np
 '''
 Wav to MIDI and chord detection
 
-Requirements: pip install music21 vamp librosa midiutil
+Requirements: pip install numpy music21 vamp librosa midiutil matplotlib scipy
+sudo apt-get install timidity
+
 Melodia plugin in Mac:
     cd /Library/Audio/Plug-Ins
     mkdir Vamp && cd Vamp
     cp Melodia/* ./
-    
+
+Linux:
+    Go to ./venv36/lib/python3.6/site-packages/music21/graph/primitives.py
+        > Line 502 (first line of callDoneAction) 
+        > Add `fp = self.savedKeywords['fp']`
+
 References:
 Chord detection with Music21: https://www.kaggle.com/wfaria/midi-music-data-extraction-using-music21
 '''
+
+
+# Open MIDI files
+# Some helper methods.
+def concat_path(path, child):
+    return path + "/" + child
+
+
+# Music21 library: robust platform to explore music files and music theory.
+def open_midi(midi_path, remove_drums):
+    # There is an one-line method to read MIDIs
+    # but to remove the drums we need to manipulate some
+    # low level MIDI events.
+    mf = midi.MidiFile()
+    mf.open(midi_path)
+    mf.read()
+    mf.close()
+    if (remove_drums):
+        for i in range(len(mf.tracks)):
+            mf.tracks[i].events = [ev for ev in mf.tracks[i].events if ev.channel != 10]
+
+    return midi.translate.midiFileToStream(mf)
 
 
 def save_midi(outfile, notes, tempo):
@@ -37,7 +66,7 @@ def save_midi(outfile, notes, tempo):
         onset = note[0] * (tempo / 60.)
         duration = note[1] * (tempo / 60.)
         # duration = 1
-        pitch = note[2]
+        pitch = int(note[2])
         midifile.addNote(track, channel, pitch, onset, duration, volume)
 
     # And write it to disk.
@@ -67,7 +96,7 @@ def midi_to_notes(midi, fs, hop, smooth, minduration):
             duration += 1
         else:
             # treat 0 as silence
-            if p_prev > 0:
+            if p_prev is not None and p_prev > 0:
                 # add note
                 duration_sec = duration * hop / float(fs)
                 # only add notes that are long enough
@@ -81,7 +110,7 @@ def midi_to_notes(midi, fs, hop, smooth, minduration):
             p_prev = p
 
     # add last note
-    if p_prev > 0:
+    if p_prev is not None and p_prev > 0:
         # add note
         duration_sec = duration * hop / float(fs)
         onset_sec = onset * hop / float(fs)
@@ -143,57 +172,63 @@ def audio_to_midi_melodia(infile, outfile, bpm, smooth=0.25, minduration=0.1):
 
 
 def init_parse():
+    sample = 7
+    duration = 3
+    em_type, em_type_short, em_type_int = 'positive', 'pos', 1
+    #em_type, em_type_short, em_type_int = 'negative', 'neg', 0
     parser = argparse.ArgumentParser(description='Convert wav to midi')
-    parser.add_argument('--data_dir', default='./data_1/',
+    parser.add_argument('--data_dir', default='./datasets/{}secs/{}/{}_sample{}/'.format(duration, em_type, em_type_short, sample),  # './data_1/',
                         help='Directory with data')
-    parser.add_argument('--infile', default='set6_epTest_cnnseq2sample-s16-em1_cnnseq2seqAudio.wav',
+    #parser.add_argument('--infile', default='epTest_cnnseq2sample-s{}-em{}.wav'.format(sample, em_type_int),
+    parser.add_argument('--infile', default='epTest_cnnseq2sample-s{}-em{}_cnnseq2seqAudio.wav'.format(sample, em_type_int),
+                        # 'set6_epTest_cnnseq2sample-s16-em1_cnnseq2seqAudio.wav',
                         help='Filename waveform')
-    parser.add_argument('--infile', default='set6_epTest_cnnseq2sample-s16-em1_cnnseq2seqAudio.mid',
+    parser.add_argument('--outfile', default='epTest_cnnseq2sample-s{}-em{}_cnnseq2seqAudio.mid'.format(sample, em_type_int),
+                        # 'set6_epTest_cnnseq2sample-s16-em1_cnnseq2seqAudio.mid',
                         help='Filename MIDI')
 
     args = parser.parse_args()
     return args
 
 
+# For linux
+# Fix: "music21.environment.EnvironmentException: Cannot find a valid application path for format None. Specify this in your Environment by calling environment.set('graphicsPath', '/path/to/application')"
+# https://web.mit.edu/music21/doc/moduleReference/moduleEnvironment.html
+us = environment.UserSettings()
+environment.set('graphicsPath', '/usr/bin/timidity')
+
 args = init_parse()
 data_dir = args.data_dir
+# print(os.listdir(data_dir))
+
 # Save as test.mid
 audio_to_midi_melodia(infile=data_dir + args.infile,
                       outfile=data_dir + args.outfile,
                       bpm=146, smooth=0.25, minduration=0.1)
 
-# File
-FILE = args.outfile
-
-
-# Open MIDI files
-# Some helper methods.
-def concat_path(path, child):
-    return path + "/" + child
-
-
-print(os.listdir(data_dir))
-
-
-# Music21 library: robust platform to explore music files and music theory.
-def open_midi(midi_path, remove_drums):
-    # There is an one-line method to read MIDIs
-    # but to remove the drums we need to manipulate some
-    # low level MIDI events.
-    mf = midi.MidiFile()
-    mf.open(midi_path)
-    mf.read()
-    mf.close()
-    if (remove_drums):
-        for i in range(len(mf.tracks)):
-            mf.tracks[i].events = [ev for ev in mf.tracks[i].events if ev.channel != 10]
-
-    return midi.translate.midiFileToStream(mf)
-
-
 # base_midi = open_midi(concat_path(sonic_path, "green-hill-zone.mid"), True)
-base_midi = open_midi(concat_path(data_dir, FILE), True)
-base_midi
+midi_path = concat_path(data_dir, args.outfile)
+print(midi_path)
+base_midi = open_midi(midi_path, True)
+# print(base_midi)
 
 # We can take a look on the pitch histogram to see which notes are more used.
-base_midi.plot('histogram', 'pitchClass', 'count')
+fp = concat_path(data_dir, args.outfile.split('.mid')[0] + '.png')
+base_midi.plot('histogram', 'pitchClass', 'count', fp=fp)
+
+# Extra composition parameters
+timeSignature = base_midi.getTimeSignatures()[0]
+music_analysis = base_midi.analyze('key')
+str = "Music time signature: {0}/{1}\n".format(timeSignature.beatCount, timeSignature.denominator)
+str += "Expected music key: {0}\n".format(music_analysis)
+str += "Music key confidence: {0}\n".format(music_analysis.correlationCoefficient)
+str += "Other music key alternatives:\n"
+for analysis in music_analysis.alternateInterpretations:
+    if (analysis.correlationCoefficient > 0.5):
+        str += '    {}\n'.format(analysis)
+
+print(str)
+fp = concat_path(data_dir, args.outfile.split('.mid')[0] + '.txt')
+f = open(fp, 'w')
+f.write(str)
+f.close()
