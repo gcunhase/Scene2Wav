@@ -338,7 +338,7 @@ if __name__ == '__main__':
     acc, euc_dist_mean = test_cnn(cnn_model, dataloader_label_test, dataloader_test, target_bin=target_bin)
 
     # Train CNN-Seq2Seq
-    if seq2seq_params['mode'] is 'train':
+    if seq2seq_params['mode'] == 'train':
         print("\nTraining CNN-Seq2Seq model...")
         cnn_seq2seq_model = CNNSeq2Seq(seq2seq_params, cnn_model, device).cuda(args.gpu_num[0])
 
@@ -354,17 +354,17 @@ if __name__ == '__main__':
     print("\nTesting CNN-Seq2Seq model...")
     print("\nTest data before fine tuning - CNN accuracy: {:.2f}% and euclidian distance: {:.2f}".
           format(acc, euc_dist_mean))
-    acc_fine_tuning, euc_dist_mean_fine_tuning, p_mean, r_mean = test(seq2seq_params, dataloader_label_test,
-                                                                      dataloader_test, dataloader_audio_test,
-                                                                      target_bin=target_bin, device=torch.device('cuda'))
-    print("\nTest data after fine tuning - CNN accuracy: {:.2f}% and euclidian distance: {:.2f} - CNNSeq2Seq p {:.4f} and r {:.4f}".
-          format(acc_fine_tuning, euc_dist_mean_fine_tuning, p_mean, r_mean))
+    acc_fine_tuning, euc_dist_mean_fine_tuning = test(seq2seq_params, dataloader_label_test,
+                                                      dataloader_test, dataloader_audio_test,
+                                                      target_bin=target_bin, device=torch.device('cuda'))
+    print("\nTest data after fine tuning - CNN accuracy: {:.2f}% and euclidian distance: {:.2f}".
+          format(acc_fine_tuning, euc_dist_mean_fine_tuning))
 
-    acc_fine_tuning, euc_dist_mean_fine_tuning, p_mean, r_mean = test(seq2seq_params, dataloader_label_train,
-                                                                      dataloader_train, dataloader_audio_train,
-                                                                      target_bin=target_bin, device=torch.device('cuda'), use_best_checkpoint=True)
-    print("\nTest data after fine tuning (BEST CKPT) - CNN accuracy: {:.2f}% and euclidian distance: {:.2f} - CNNSeq2Seq p {:.4f} and r {:.4f}".
-          format(acc_fine_tuning, euc_dist_mean_fine_tuning, p_mean, r_mean))
+    acc_fine_tuning, euc_dist_mean_fine_tuning = test(seq2seq_params, dataloader_label_train,
+                                                      dataloader_train, dataloader_audio_train,
+                                                      target_bin=target_bin, device=torch.device('cuda'), use_best_checkpoint=True)
+    print("\nTest data after fine tuning (BEST CKPT) - CNN accuracy: {:.2f}% and euclidian distance: {:.2f}".
+          format(acc_fine_tuning, euc_dist_mean_fine_tuning))
 
     #print("\nGenerate data after fine tuning (BEST CKPT) - without target")
     #generate(seq2seq_params, dataloader_test, device=torch.device('cuda'), use_best_checkpoint=True)

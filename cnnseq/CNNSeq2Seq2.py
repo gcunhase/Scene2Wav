@@ -8,11 +8,12 @@ import numpy as np
 import json
 import os
 
-from cnnseq.utils_models import set_optimizer_parameters, flatten_audio_with_params, load_json, save_json_with_params
-from cnnseq.Seq2Seq import Seq2Seq
-from cnnseq.CNN import load_model as load_model_cnn
+from .utils_models import set_optimizer_parameters, flatten_audio_with_params, load_json, save_json_with_params
+from .Seq2Seq import Seq2Seq
+from .CNN import load_model as load_model_cnn
 import matplotlib
-from moviepy.editor import VideoClip, ImageSequenceClip
+from moviepy.editor import VideoClip
+from .ImageSequenceClip import ImageSequenceClip
 from moviepy.audio.AudioClip import AudioArrayClip
 
 SOS_token = 10
@@ -398,7 +399,7 @@ def get_h0(model, dataloader_test, dataloader_audio_test, params):
     return h0_arr
 
 
-def load_cnnseq2seq(cnn_pretrain, cnn_seq2seq_pretrain, use_best_checkpoint=True):
+def load_cnnseq2seq(cnn_pretrain, cnn_seq2seq_pretrain, use_best_checkpoint=True, trim_model_name=False):
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.83perf/'
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn2_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_95.36perf/'
     # cnn_model_path = utils.project_dir_name() + 'cnnseq/cnn2_origAudio_res_vanilla_HSL_bin_1D_CrossEntropy_ep_40_bs_30_lr_0.001_we_0.0001_adam_76.78perf/'
@@ -418,7 +419,6 @@ def load_cnnseq2seq(cnn_pretrain, cnn_seq2seq_pretrain, use_best_checkpoint=True
         saved_model_cnn = cnnseq2seq_params['saved_model_cnn_best']
         # saved_model_cnn = cnn_params['saved_model_best_test']
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    trim_model_name = False  # True if num_batches_tracked issue -> means Pytorch version is not 0.4.1
     model = load_model(cnn_params, cnnseq2seq_params, cnnseq2seq_model_path, saved_model, saved_model_cnn,
                        device=device, trim_model_name=trim_model_name)
     ## Load CNN before fine-tuning (error loading fine-tuned)

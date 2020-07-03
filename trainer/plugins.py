@@ -18,7 +18,7 @@ import pickle
 import time
 import numpy as np
 from cnnseq import utils
-from moviepy.editor import VideoClip, ImageSequenceClip
+from cnnseq.ImageSequenceClip import ImageSequenceClip
 from moviepy.audio.AudioClip import AudioArrayClip
 
 
