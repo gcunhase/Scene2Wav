@@ -187,6 +187,7 @@ def train(model, args, dataloader_label_train, dataloader_train, dataloader_labe
     train_acc_ep_arr = []
     test_acc_arr = []
     test_acc_ep_arr = []
+    max_train_acc = 0
     for epoch in range(args.num_epochs):
         for d, l in zip(dataloader_train.keys(), dataloader_label_train.keys()):
             label = dataloader_label_train[l]
@@ -272,10 +273,12 @@ def train(model, args, dataloader_label_train, dataloader_train, dataloader_labe
                         format(epoch + 1, args.num_epochs, loss.item(), max_train_acc)
 
             log_str = 'Training {}%, epoch [{}/{}], loss: {:.4f}, train_acc {:.4f} at {} ep, test_acc: {:.4f} at {} ep,' \
-                      ' lr: [fuzz {:.4f}, conv1 {:.4f}, conv2 {:.4f}, conv3 {:.4f}, defuzz {:.4f}, fc {:.4f}]'.\
-                format(100*(epoch + 1)/args.num_epochs, epoch + 1, args.num_epochs, loss.item(), max_train_acc,
-                        max_train_acc_ep, max_test_acc, max_test_acc_ep, lr_fuzz, lr_conv1, lr_conv2, lr_conv3,
-                       lr_defuzz, args.learning_rate)
+                      'lr: {}'. \
+                format(100 * (epoch + 1) / args.num_epochs, epoch + 1, args.num_epochs, loss.item(), max_train_acc,
+                       max_train_acc_ep, max_test_acc, max_test_acc_ep, args.learning_rate)
+            if not args.model_type == 'vanilla':
+                log_str += ', Fyzzy params: [fuzz {:.4f}, conv1 {:.4f}, conv2 {:.4f}, conv3 {:.4f}, defuzz {:.4f}, fc {:.4f}]'.\
+                    format(lr_fuzz, lr_conv1, lr_conv2, lr_conv3, lr_defuzz)
             #log_str = 'Training {}%, epoch [{}/{}], loss: {:.4f}, train_acc {:.4f} at {} ep, test_acc: {:.4f} at {} ep'\
             #    .format(100 * (epoch + 1) / args.num_epochs, epoch + 1, args.num_epochs, loss.item(), max_train_acc,
             #            max_train_acc_ep, max_test_acc, max_test_acc_ep)
@@ -322,7 +325,7 @@ def train(model, args, dataloader_label_train, dataloader_train, dataloader_labe
 
     # Get weights
     # print("\nModel keys: {}".format(model.state_dict().keys()))
-    return lab, img, args.results_dir
+    return lab, img, args.results_dir, max_train_acc
 
 
 def load_model(params, results_dir_model, saved_model_path, trim_model_name=False):

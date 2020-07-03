@@ -166,7 +166,7 @@ def feats_tensor(attributes, bs=1, data_type='hist'):
     return dataloader
 
 
-def load_data1(data, target_bin=True, data_type='hist', emotion_res='1D', normalize_data=False):
+def load_data1(data, target_bin=True, data_type='hist', emotion_res='1D', do_normalize_data=False):
     if 'label' in data:
         y, y2D, y2D_raw = data['label'], data['label2D'], data['label2D_raw']
     else:  # doesn't support 2D emotion label
@@ -179,7 +179,7 @@ def load_data1(data, target_bin=True, data_type='hist', emotion_res='1D', normal
     print("Loading data - X: {}, y: {}, y2D: {}, y2D_raw: {}".format(np.shape(X), np.shape(y), np.shape(y2D), np.shape(y2D_raw)))
 
     s = X.shape
-    if normalize_data:
+    if do_normalize_data:
         X = utils.normalize_data(X, s)
 
     if data_type == 'histFlatten':
@@ -224,7 +224,7 @@ def load_data1(data, target_bin=True, data_type='hist', emotion_res='1D', normal
     return att_train, label_train
 
 
-def load_data(data_dir, data_filename, target_bin=True, data_type='hist', emotion_res='1D', normalize_data=False):
+def load_data(data_dir, data_filename, target_bin=True, data_type='hist', emotion_res='1D', do_normalize_data=False):
     """ Loads data, assumes that train and test .npz files already exits (see main.py to create it)
     """
     train_data_path = "{data_dir}{path}_train.npz".format(data_dir=data_dir, path=data_filename)
@@ -232,10 +232,10 @@ def load_data(data_dir, data_filename, target_bin=True, data_type='hist', emotio
 
     # Load data
     data_train = np.load(train_data_path)
-    att_train, label_train = load_data1(data_train, target_bin=target_bin, data_type=data_type, emotion_res=emotion_res, normalize_data=normalize_data)
+    att_train, label_train = load_data1(data_train, target_bin=target_bin, data_type=data_type, emotion_res=emotion_res, do_normalize_data=do_normalize_data)
 
     data_test = np.load(test_data_path)
-    att_test, label_test = load_data1(data_test, target_bin=target_bin, data_type=data_type, emotion_res=emotion_res, normalize_data=normalize_data)
+    att_test, label_test = load_data1(data_test, target_bin=target_bin, data_type=data_type, emotion_res=emotion_res, do_normalize_data=do_normalize_data)
 
     return att_train, label_train, att_test, label_test
 
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     #                                                                     target_bin=target_bin,
     #                                                                     data_type=args.data_type,
     #                                                                     emotion_res=args.emotion_res,
-    #                                                                     normalize_data=False)
+    #                                                                     do_normalize_data=False)
 
     # IF using MSEloss, use tensor_type='float'. If using CrossEntropy, use , tensor_type='long'
     target_bin2 = target_bin
@@ -281,7 +281,7 @@ if __name__ == '__main__':
         tensor_type = 'long'
     att_train, label_train, att_test, label_test = load_data(args.data_dir, args.data_filename,
                                                              target_bin=target_bin2, data_type=args.data_type,
-                                                             emotion_res=args.emotion_res, normalize_data=False)
+                                                             emotion_res=args.emotion_res, do_normalize_data=False)
     print("\nLoaded data - train: {}, {}, test: {}, {}".format(np.shape(att_train), np.shape(label_train),
                                                                np.shape(att_test), np.shape(label_test)))
     print("\nTrain: min {}, max {}".format(np.amin(np.amin(np.amin(np.amin(att_train)))),
@@ -303,7 +303,8 @@ if __name__ == '__main__':
         args.num_classes = get_num_classes(target_bin, args.emotion_res)
 
     # Train CNN
-    if args.mode is 'train':
+    max_train_acc = 0
+    if args.mode == 'train':
         if args.model_type == 'vanilla':
             print("\nCNN model...")
             if args.data_type == 'histFlatten':
@@ -319,8 +320,8 @@ if __name__ == '__main__':
             #torch.cuda.manual_seed(args.SEED)
             model = CNFN_2MF(vars(args)).cuda(args.gpu_num[0])
 
-        lab, img, res_dir = train(model, args, dataloader_label_train, dataloader_train, dataloader_label_test,
-                                  dataloader_test, bs=1, target_bin=target_bin, criterion_type=args.criterion_type)
+        lab, img, res_dir, max_train_acc = train(model, args, dataloader_label_train, dataloader_train, dataloader_label_test,
+                                                 dataloader_test, bs=1, target_bin=target_bin, criterion_type=args.criterion_type)
 
         ## Test the model with last sample
         # last_test_label = {'0': lab.cpu()}
@@ -344,7 +345,7 @@ if __name__ == '__main__':
         train_acc_best = test_with_cnfn_test_func(args, dataloader_label_test, dataloader_test, best_model=True,
                                                   best_train=True)
 
-    print("Test data - Accuracy: test {:.4f}, best_test {:.4f}, best_train {:.4f}%".
-          format(test_acc, test_acc_best, train_acc_best))
+    print("Test data - Accuracy: test {:.4f}, best_test {:.4f}, best_train {:.4f}%, max_train_acc {:.4f}%".
+          format(test_acc, test_acc_best, train_acc_best, max_train_acc))
 
     print("Time elapsed: {:.4f} min".format((timer()-start_time)/60))
