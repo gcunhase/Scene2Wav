@@ -1,4 +1,4 @@
-from moviepy.editor import *
+from moviepy.editor import VideoFileClip
 from cnnseq.utils import project_dir_name, ensure_dir
 import numpy as np
 from matplotlib import pyplot as plt
