@@ -22,8 +22,23 @@ from cnnseq.utils import normalize
 #PRETRAINED_CKP = 'best-ep26-it29328'  # Audio orig
 
 # Audio INST
-RESULTS_PATH = 'results/exp:TEST2_END2END_FIXED_AUDIO_RESHAPE-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
-PRETRAINED_CKP = 'best-ep19-it21432'  # Audio
+audio_duration = 10
+data_name = 'cognimuse'  # 'cognimuse'
+if data_name == 'cognimuse':
+    if audio_duration == 3:
+        RESULTS_PATH = 'results/exp:TEST2_END2END_FIXED_AUDIO_RESHAPE-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
+        PRETRAINED_CKP = 'best-ep19-it21432'  # Audio
+        SEQ2SEQ_MODEL_TYPE = 'seq2seq'  # COGNIMUSE
+    else:
+        #RESULTS_PATH = 'results/exp:TEST_END2END_intAudio_10secs_CNNadam_adam_RESUME-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
+        RESULTS_PATH = 'results/exp:TEST_END2END_intAudio_10secs_CNNadam_adam_RESUME_videoSizeCorrected10secs-frame_sizes:16,4-n_rnn:2-dataset:data_npz/'
+        PRETRAINED_CKP = 'best-ep16-it17584'  # Audio
+        SEQ2SEQ_MODEL_TYPE = 'seq2seq'  # COGNIMUSE
+else:
+    # DEAP 3secs - 16frames
+    RESULTS_PATH = 'results/exp:DEAP2_END2END_intAudio_3secs_CNNadam_adam-frame_sizes:16,4-n_rnn:2-dataset:data_npz_deap/'
+    PRETRAINED_CKP = 'best-ep25-it5875'
+    # SEQ2SEQ_MODEL_TYPE = 'seq2seq_gru'
 
 PRETRAINED_DIR = RESULTS_PATH + 'checkpoints/'
 PRETRAINED_PATH = PRETRAINED_DIR + PRETRAINED_CKP
@@ -31,11 +46,11 @@ PRETRAINED_PATH_CNNSEQ2SAMPLE = PRETRAINED_DIR + 'cnnseq2sample-' + PRETRAINED_C
 # GENERATED_PATH = RESULTS_PATH + 'generated/'
 GENERATED_PATH = RESULTS_PATH + 'generated_cnnseq2sample/'
 if not os.path.exists(GENERATED_PATH):
-    os.mkdir(GENERATED_PATH)
+    os.makedirs(GENERATED_PATH)
 
 TEST_PATH = RESULTS_PATH + 'test_cnnseq2sample/'
 if not os.path.exists(TEST_PATH):
-    os.mkdir(TEST_PATH)
+    os.makedirs(TEST_PATH)
 
 
 def test_emotion(chosen_emotion):
@@ -79,6 +94,7 @@ with open(params_path, 'r') as fp:
     params = json.load(fp)
 
 # Create model with same parameters as used in training
+print("Instantiate model...")
 model = SampleRNN(
     frame_sizes=params['frame_sizes'],
     n_rnn=params['n_rnn'],
@@ -90,9 +106,11 @@ model = SampleRNN(
 )
 print(params['cnn_pretrain'])
 print(params['cnn_seq2seq_pretrain'])
-model_cnnseq2sample = CNNSeq2SampleRNN(params).cuda()
+if data_name == 'cognimuse':
+    params['seq2seq_model_type'] = SEQ2SEQ_MODEL_TYPE
 
 # Delete "model." from key names since loading the checkpoint automatically attaches it to the key names
+print("Load model...")
 pretrained_state = torch.load(PRETRAINED_PATH)
 new_pretrained_state = OrderedDict()
 
@@ -106,10 +124,13 @@ model.load_state_dict(new_pretrained_state)
 model = model.cuda()
 
 pretrained_state_cnnseq2sample = torch.load(PRETRAINED_PATH_CNNSEQ2SAMPLE)
+trim_model_name = False  # True if num_batches_tracked issue -> means Pytorch version is not 0.4.1
+model_cnnseq2sample = CNNSeq2SampleRNN(params, trim_model_name=trim_model_name).cuda()
 model_cnnseq2sample.load_state_dict(pretrained_state_cnnseq2sample)
 
 # Generate Plugin
-num_samples = 10  # params['n_samples']
+print("Generate Plugin...")
+num_samples = 42 #(max)  # params['n_samples']
 sample_length = params['sample_length']
 sample_rate = params['sample_rate']
 print("Number samples: {}, sample_length: {}, sample_rate: {}".format(num_samples, sample_length, sample_rate))
@@ -119,7 +140,14 @@ generator = GeneratorCNNSeq2SamplePlugin(GENERATED_PATH, num_samples, sample_len
 generator.register_generate(model, model_cnnseq2sample, params['cuda'])
 
 # Test data
-data_loader = make_data_loader(model.lookback, params, npz_filename=params['npz_filename_test'])  #'video_feats_HSL_10fps_pad_test.npz')
+print("Load test data...")
+#if data_name == 'deap':
+#    # Error: 'Expected hidden size (2, 128, 1024), got (2, 32, 1024)'
+#    params['batch_size'] = 32
+if data_name == 'deap':
+    data_loader = make_data_loader(model.lookback, params, npz_filename=params['npz_filename'])  #'video_feats_HSL_10fps_pad_test.npz')
+else:
+    data_loader = make_data_loader(model.lookback, params, npz_filename=params['npz_filename_test'])  # 'video_feats_HSL_10fps_pad_test.npz')
 test_data_loader = data_loader(0, 1, eval=False)
 
 # Test target audio with emotion 0 and 1
@@ -127,5 +155,7 @@ test_data_loader = data_loader(0, 1, eval=False)
 # test_emotion(1)
 
 # Generate new audio
-generator.epoch(test_data_loader, 'Test_cnnseq2sample', desired_emotion=0)
-generator.epoch(test_data_loader, 'Test_cnnseq2sample', desired_emotion=1)
+print("Generate NEG samples...")
+generator.epoch(test_data_loader, 'Test_cnnseq2sample', desired_emotion=0)  # Max: 92 (10secs)
+#print("Generate POS samples...")
+generator.epoch(test_data_loader, 'Test_cnnseq2sample', desired_emotion=1)  # Max: 41 (10secs)
