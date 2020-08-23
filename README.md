@@ -80,7 +80,7 @@ python generate_audio_scene2wav.py
 ## Results
 * Results saved in `results/`: *training log*, *loss plots*, *model checkpoints* and *generated samples*.
 
-* You can check some generated samples in 'results_generated_samples/' (tested with VLC Media Player).
+* You can check some generated samples in [`results_generated_samples/`](./results_generated_samples/) (tested with VLC Media Player).
 
 ## Acknowledgement
 In case you wish to use this code, please credit this repository or send me an email with any requests or questions.  
