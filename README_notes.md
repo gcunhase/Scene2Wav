@@ -88,7 +88,7 @@ CUDA_VISIBLE_DEVICES=1 python train.py --exp TEST_3SECS_CNNSEQ2SEQ_CORRECTED_N3 
     CUDA_VISIBLE_DEVICES=6 python CNNSeq2Seq2_main4.py --mode=train --input_size=100 --batch_size=100 --num_epochs=20 --learning_rate=0.0001 --optimizer_name=adam --num_layers=2 --sequence_length=160000 --data_dir=../datasets/data_npz/ --data_filename=video_feats_HSL_10fps_10secs_intAudio_pad_videoFramesCorrected --cnn_model_path=./results/cognimuse_videoFramesCorrected_cnn_10secs_HSL_bin_1D/res_vanilla_HSL_bin_1D_CrossEntropy_ep_200_bs_100_lr_0.0001_we_0.0001_adam/ --results_dir=./results/cognimuse_videoFramesCorrected_cnnseq2seq_10secs_HSL_bin_1D_cnn_bs100_ep200/
     ```
     * 3 - Train Scene2Wav:
-    > Trained from scratch (Start Jun29th-17:35, ep): 
+    > Trained from scratch LDS4 (Start Jul03rd-16:20, ep): 
     ```
     CUDA_VISIBLE_DEVICES=5 python train.py --exp TEST_END2END_intAudio_10secs_CNNadam_adam_videoSizeCorrected10secs --seq2seq_model_type=seq2seq_gru --epoch_limit 25 --sample_length 160000 --frame_sizes 16 4 --dataset data_npz --batch_size 128 --cnn_pretrain cnnseq/results/cognimuse_videoFramesCorrected_cnn_10secs_HSL_bin_1D/res_vanilla_HSL_bin_1D_CrossEntropy_ep_200_bs_100_lr_0.0001_we_0.0001_adam/ --cnn_seq2seq_pretrain cnnseq/results/cognimuse_videoFramesCorrected_cnnseq2seq_10secs_HSL_bin_1D_cnn_bs100_ep200/HSL_bin_1D_res_stepPred_8_ep_20_bs_100_relu_layers_2_size_128_lr_0.001_we_1e-05_adam_trainSize_953_testSize_341_cost_audio/ --n_rnn 2 --n_samples 1 --npz_filename video_feats_HSL_10fps_10secs_intAudio_pad_videoFramesCorrected_train.npz --npz_filename_test video_feats_HSL_10fps_10secs_intAudio_pad_videoFramesCorrected_test.npz
     ```
