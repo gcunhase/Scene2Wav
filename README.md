@@ -1,5 +1,5 @@
 # Scene2Wav
-* A PyTorch implementation of *Scene2Wav: A Deep Convolutional Sequence-to-Conditional SampleRNN for Emotional Scene Musicalization*
+* A PyTorch implementation of [*Scene2Wav: A Deep Convolutional Sequence-to-Conditional SampleRNN for Emotional Scene Musicalization*](http://link.springer.com/article/10.1007/s11042-020-09636-5) (MTAP 2020)
 * Model has 3 stages: visual feature extraction with CNN, visual feature encoding with Deep RNN Encoder and music generation with Scene2Wav decoder (conditional SampleRNN Decoder).
 <p align="center">
 <img src="./data_analysis/proposed_model.png" width="150" alt="Scene2Wav">
@@ -84,7 +84,18 @@ python generate_audio_scene2wav.py
 
 ## Acknowledgement
 In case you wish to use this code, please credit this repository or send me an email with any requests or questions.  
-
+```
+@article{sergio2020jmta,
+    author={Sergio, G. C. and Lee, M.},
+    title={Scene2Wav: A Deep Convolutional Sequence-to-Conditional SampleRNN for Emotional Scene Musicalization},
+    journal={Multimedia Tools and Applications},
+    year={2020},
+    pages={1--20},
+    doi={10.1007/s11042-020-09636-5},
+    issn={1573-7721},
+    volume={2020}
+}
+```
 
 Please also cite the pre-processing repository [AnnotatedMV-PreProcessing](https://github.com/gcunhase/AnnotatedMV-PreProcessing) as:
 ```
